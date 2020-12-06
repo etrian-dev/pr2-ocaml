@@ -44,9 +44,9 @@ type exp =
 		| Contains of exp * exp
 		| Insert of exp * exp
 		| Remove of exp * exp
-		(*| Subset of exp * exp
+		| Subset of exp * exp
 		| SetMin of exp
-		| SetMax of exp*)
+		| SetMax of exp
 ;;
 
 (*============= Ambiente =============*)
@@ -78,6 +78,17 @@ type evT =
 	 *	il secondo campo della tupla (evT) è il tipo del Set
 	 *)
 	| SetVal of (evT list) * string
+	
+	(*
+	=======================TODO=====================
+	=======================TODO=====================
+	=======================TODO=====================
+	=======================TODO=====================
+	=======================TODO=====================
+	=======================TODO=====================
+	=======================TODO=====================
+	cons operator not working properly
+	*)
 	
 	(*closure: <ide del param. formale, corpo della funzione, ambiente alla dichiarazione>*)
 	and evFun = ide * exp * evT env
@@ -158,7 +169,6 @@ let setbuild t ls =
 	)
 	| _ -> failwith("Not a valid Set type");;
 
-
 (*Removes the elem x from the list ls*)
 let rec drop_x ls x = match ls with
 	| [] -> []
@@ -187,10 +197,8 @@ let insert items set_type newel =
 	if typecheck set_type newel
 	(*Se lo sono inserisco l'elemento, se non era già contenuto nel Set*)
 	then if contains (SetVal(items, set_type)) newel
-		then SetVal(newel::items, set_type)
-		else 
-			(print_endline "Element already in the set";
-			SetVal(items, set_type))
+		then 	(print_endline "Element already in the set"; SetVal(items, set_type))
+		else SetVal(newel::items, set_type)
 	else (print_endline "Type mismatch, cannot insert"; SetVal(items, set_type))
 ;;
 
@@ -198,8 +206,40 @@ let remove items set_type x =
 	(*Se x è nel Set, lo rimuovo*)
 	if contains (SetVal(items, set_type)) x
 		then SetVal(drop_x items x, set_type)
-		else (print_endline "Element not in the set";SetVal(items, set_type))
+		else (print_endline "Element not in the set"; SetVal(items, set_type))
 ;;
+
+(*Bool(true) se il set a è un sottoinsieme di b*)
+let rec subset a b = match a with
+	| SetVal(items, set_type) -> 
+		(match items with
+		| [] -> Bool(true)
+		| hd::tl ->
+			if contains b hd
+			then subset (SetVal(tl, set_type)) b
+			else Bool(false)
+		)
+	| _ -> failwith("not a set")
+;;
+
+let lt x y = match x, y with
+	| Int(a), Int(b) -> a < b
+	| String(s1), String(s2) -> s1 < s2
+	| _ -> (print_endline "total ordering not defined"; true)
+
+let rec min items m = match items with
+	| [] -> m
+	| hd::tl -> 
+		if lt hd m 
+		then min items hd 
+		else min items m
+;;
+let rec max items m = match items with
+	| [] -> m
+	| hd::tl -> 
+		if lt m hd
+		then max items hd
+		else max items m;;
 
 (*============= Valutazione di exp =============*)
 (*Prende in input l'espressione e ed un ambiente r (istanziato con il tipo evT)*) 
@@ -283,13 +323,26 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 	| EmptySet(set_type) -> setbuild (eval set_type r) []
 	| Singleton(item, set_type) -> setbuild (eval set_type r) [eval item r]
 	| Set(ls, set_type) ->
-		(*Valuta la lista di exp (elementi del Set) a denotabili del linguaggio*)
-		let rec evalItems l r = 
-			(match l with
-		    [] -> []
-		    | hd::tl -> (eval hd r)::(evalItems tl r)
-			)
-		in setbuild (eval set_type r) (evalItems ls r)
+		(*	aggiunge una lista di espressioni al set, controllando di non inserire duplicati
+		 *	e con typecheck
+		 *)
+		let cons = fun x ls -> x::ls in (*necessaria solo perchè il cons tra evT non funziona bene*)
+		let rec addlist set ls = match ls with
+			(*list finita, ritorno il SetVal costruito*)
+			| [] -> set
+			| hd::tl ->
+				let el = eval hd r in
+					if contains set el
+					then addlist set tl (*ho trovato un duplicato, non lo inserisco*)
+					else (match set with (*non ho duplicati, costruisco il set*)
+						| SetVal(items, set_type) ->
+							(*typecheck: il tipo del set deve combaciare con l'elemento*)
+							if typecheck set_type el
+							then addlist (setbuild (String(set_type)) (cons el items)) tl
+							else failwith("type mismatch within elements")
+						| _ -> failwith("not a set")
+					)
+		in addlist (setbuild (eval set_type r) []) ls
 	(*Operazioni su Set*)
 	| IsEmpty(set) -> (match eval set r with
 		| SetVal([], _) -> Bool(true)
@@ -310,17 +363,21 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 		| SetVal(items, set_type) -> remove items set_type (eval elem r)
 		| _ -> failwith("not a set")
 		)
-	(*| Subset 
-	| SetMin 
-	| SetMax *)
+	| Subset(a, b) -> (match eval a r, eval b r with 
+		| SetVal(_,_), SetVal(_,_) -> subset (eval a r) (eval b r)
+		| _ -> failwith("either one is not a set"))
+	| SetMin(set) -> (match eval set r with
+		| SetVal(items, set_type) -> min items None)
+	| SetMax(set) -> (match eval set r with
+		| SetVal(items, set_type) -> min items None)
 	| _ -> failwith("eval failed")
 ;;
 
 let env0 = emptyenv Unbound;;
 let eset = EmptySet(Estring("int"));;
 let single = Singleton(Estring("Hello"), Estring("string"));;
-let intset = Set([Eint(10);Eint(4);Eint(2);Eint(10);Eint(-1);Eint(6)], Estring("int"));;
-let iset = Set([Eint(10);Eint(4);Eint(1);Eint(10);Eint(-1)], Estring("int"));;
+let intset = Set([Eint(10);Eint(10);Eint(-1);Eint(6)], Estring("int"));;
+let iset = Set([Eint(10);Eint(10);Eint(-1)], Estring("int"));;
 
 eval eset env0;;
 eval single env0;;
