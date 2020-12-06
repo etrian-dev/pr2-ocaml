@@ -39,6 +39,14 @@ type exp =
 		| EmptySet of exp
 		| Singleton of exp * exp
 		| Set of (exp list) * exp
+		(*operazioni su Set*)
+		| IsEmpty of exp
+		| Contains of exp * exp
+		| Insert of exp * exp
+		| Remove of exp * exp
+		(*| Subset of exp * exp
+		| SetMin of exp
+		| SetMax of exp*)
 ;;
 
 (*============= Ambiente =============*)
@@ -150,6 +158,49 @@ let setbuild t ls =
 	)
 	| _ -> failwith("Not a valid Set type");;
 
+
+(*Removes the elem x from the list ls*)
+let rec drop_x ls x = match ls with
+	| [] -> []
+	| hd::tl ->
+		if hd = x then tl
+		else drop_x tl x
+;;
+
+(*Di seguito implemento le operazioni su Set*)
+let contains set elem =
+	match set with
+	| SetVal(items, set_type) -> 
+		(let rec lookup ls x =
+			match ls with
+			| [] -> false
+			| hd::tl ->
+				if (typecheck set_type elem) && (hd = x) then true
+				else lookup tl x
+			in lookup items elem
+		)
+	| _ -> failwith("Error: not a Set")
+;;
+
+let insert items set_type newel =
+	(*prima controllo che il tipo del set e dell'elemento siano uguali*)
+	if typecheck set_type newel
+	(*Se lo sono inserisco l'elemento, se non era già contenuto nel Set*)
+	then if contains (SetVal(items, set_type)) newel
+		then SetVal(newel::items, set_type)
+		else 
+			(print_endline "Element already in the set";
+			SetVal(items, set_type))
+	else (print_endline "Type mismatch, cannot insert"; SetVal(items, set_type))
+;;
+
+let remove items set_type x =
+	(*Se x è nel Set, lo rimuovo*)
+	if contains (SetVal(items, set_type)) x
+		then SetVal(drop_x items x, set_type)
+		else (print_endline "Element not in the set";SetVal(items, set_type))
+;;
+
 (*============= Valutazione di exp =============*)
 (*Prende in input l'espressione e ed un ambiente r (istanziato con il tipo evT)*) 
 (*Restituisce un valore esprimibile (tipo evT)*)
@@ -239,74 +290,37 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 		    | hd::tl -> (eval hd r)::(evalItems tl r)
 			)
 		in setbuild (eval set_type r) (evalItems ls r)
-	| _ -> failwith("eval failed")
-;;
-
-(*============= Le modifiche apportate =============*)
-(*Di seguito implemento le operazioni su Set*)
-let contains set elem =
-	match set with
-	| Set(items, set_type) -> 
-		(let rec lookup ls x =
-			match ls with
-			| [] -> false
-			| hd::tl ->
-				if hd=x then true
-				else lookup tl x
-			in lookup items elem
+	(*Operazioni su Set*)
+	| IsEmpty(set) -> (match eval set r with
+		| SetVal([], _) -> Bool(true)
+		| _ -> Bool(false)
 		)
-	| _ -> failwith("Error: not a Set")
-;;
-
-let isempty set = match set with
-	| EmptySet(_) -> true
-	| Set(items, _) -> (match items with
-		| [] -> true
-		| hd::tl -> false
-	)
-	| _ -> let _ = print_endline "Error. Only applicable to sets" in false
-;;
-
-(*controlla se il tipo t combacia con il tipo di el (valutati in env)*)
-let typematch t el env = match eval t env with
-		| String(s) -> typecheck s (eval el env)
-		| _ -> failwith("not a type")
-;;
-
-(*inserisce, se i tipi combaciano, newel in set (controllando che non sia già presente)*)
-let insert set newel env =
-	if not (contains set newel) 
-	then match set with
-	| EmptySet(set_type) -> if typematch set_type newel env
-		then Set([newel], set_type)
-		else (print_endline "Cannot insert. Reason: type mismatch"; set)
-	| Singleton(item, set_type) -> if typematch set_type newel env
-		then Set(newel::[item], set_type)
-		else (print_endline "Cannot insert. Reason: type mismatch"; set)
-	| Set(items, set_type) -> if typematch set_type newel env
-		then Set(newel::items, set_type)
-		else (print_endline "Cannot insert. Reason: type mismatch"; set)
-	| _ -> (print_endline "Cannot insert. Reason: not a Set"; set)
-	else (print_endline "Cannot insert. Reason: element already in the set"; set)
-;;
-
-let remove set elem =
-	match set with
-	| Set(items, set_type) -> if contains set elem
-		then
-			let rec rmEl ls el = match ls with
-				| hd::tl -> if hd=el then tl else hd::(rmEl tl el)
-				| _ -> failwith("Should not be thrown")
-			in Set(rmEl items elem, set_type)
-		else failwith("Cannot remove. Reason element not in the Set")
-		
-	| _ -> failwith("Cannot remove. Reason: not a Set")
+	(*ritorna Bool(true) se set contiene elem, Bool(false) altrimenti*)
+	| Contains(set, elem) -> 
+			if contains (eval set r) (eval elem r) 
+			then Bool(true) 
+			else Bool(false)
+	| Insert(set, elem) -> 
+		(match eval set r with
+		| SetVal(items, set_type) -> insert items set_type (eval elem r)
+		| _ -> failwith("not a set")
+		)
+	| Remove(set, elem) -> 
+		(match eval set r with
+		| SetVal(items, set_type) -> remove items set_type (eval elem r)
+		| _ -> failwith("not a set")
+		)
+	(*| Subset 
+	| SetMin 
+	| SetMax *)
+	| _ -> failwith("eval failed")
 ;;
 
 let env0 = emptyenv Unbound;;
 let eset = EmptySet(Estring("int"));;
 let single = Singleton(Estring("Hello"), Estring("string"));;
 let intset = Set([Eint(10);Eint(4);Eint(2);Eint(10);Eint(-1);Eint(6)], Estring("int"));;
+let iset = Set([Eint(10);Eint(4);Eint(1);Eint(10);Eint(-1)], Estring("int"));;
 
 eval eset env0;;
 eval single env0;;
