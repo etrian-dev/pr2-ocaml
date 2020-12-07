@@ -1,3 +1,14 @@
+(*
+#################################################################
+# Todo: remove does not work properly yet 											#
+#																																#
+#																																#
+#																																#
+#																																#
+#																																#
+#################################################################
+*)
+
 (*============= Identificatori (nomi) =============*)
 (*definisco un identificatore come una stringa*)
 type ide = string;;
@@ -47,6 +58,9 @@ type exp =
 		| Subset of exp * exp
 		| SetMin of exp
 		| SetMax of exp
+		| Merge of exp * exp
+		| Intersect of exp * exp
+		| SetDiff of exp * exp
 ;;
 
 (*============= Ambiente =============*)
@@ -78,18 +92,6 @@ type evT =
 	 *	il secondo campo della tupla (evT) è il tipo del Set
 	 *)
 	| SetVal of (evT list) * string
-	
-	(*
-	=======================TODO=====================
-	=======================TODO=====================
-	=======================TODO=====================
-	=======================TODO=====================
-	=======================TODO=====================
-	=======================TODO=====================
-	=======================TODO=====================
-	cons operator not working properly
-	*)
-	
 	(*closure: <ide del param. formale, corpo della funzione, ambiente alla dichiarazione>*)
 	and evFun = ide * exp * evT env
 
@@ -170,11 +172,14 @@ let setbuild t ls =
 	| _ -> failwith("Not a valid Set type");;
 
 (*Removes the elem x from the list ls*)
-let rec drop_x ls x = match ls with
+let rec drop_x ls x acc = match ls with
 	| [] -> []
 	| hd::tl ->
-		if hd = x then tl
-		else drop_x tl x
+		match hd, x with
+		| Int(a), Int(b) -> if a = b then acc else drop_x tl x (hd::acc)
+		| Bool(a), Bool(b) -> if a = b then acc else drop_x tl x (hd::acc)
+		| String(a), String(b) -> if a = b then acc else drop_x tl x (hd::acc)
+		| _ -> failwith("not a valid type")
 ;;
 
 (*Di seguito implemento le operazioni su Set*)
@@ -205,7 +210,7 @@ let insert items set_type newel =
 let remove items set_type x =
 	(*Se x è nel Set, lo rimuovo*)
 	if contains (SetVal(items, set_type)) x
-		then SetVal(drop_x items x, set_type)
+		then SetVal(drop_x items x [], set_type)
 		else (print_endline "Element not in the set"; SetVal(items, set_type))
 ;;
 
@@ -230,16 +235,64 @@ let lt x y = match x, y with
 let rec min items m = match items with
 	| [] -> m
 	| hd::tl -> 
-		if lt hd m 
-		then min items hd 
-		else min items m
+		if (m = Unbound) || (lt hd m)
+		then min tl hd 
+		else min tl m
+;;
+
+let evTprint el = match el with 
+	| Int(x) -> string_of_int x
+	| Bool(x) -> string_of_bool x
+	| String(x) -> x
+	| _ -> ""
 ;;
 let rec max items m = match items with
 	| [] -> m
 	| hd::tl -> 
-		if lt m hd
-		then max items hd
-		else max items m;;
+		if (m = Unbound) || (lt m hd)
+		then (print_endline ("max = "^(evTprint hd)); max tl hd)
+		else max tl m;;
+
+(*	Effettua l'unione dei due set ricorsivamente: se un elemento della lista
+ *	l1 non era presente nel set inserisce hd nel set e in ogni caso ricorre 
+ *	sulla coda della lista
+ *)
+let rec merge l1 set = 
+	let items, set_type = match set with SetVal(ls, t) -> ls, t in
+	match l1 with
+	| [] -> set
+	| hd::tl -> 
+		if contains set hd 
+		then merge tl set
+		else merge tl (insert items set_type hd)
+;;
+
+(*	Effettua l'intersezione dei due set ricorsivamente: se un elemento della lista
+ *	l1 non era presente nel set lo rimuove da set e in ogni caso ricorre
+ *	sulla coda della lista
+ *)
+let rec intersect l1 set =
+	let items, set_type = match set with SetVal(ls, t) -> ls, t in
+	match l1 with
+	| [] -> SetVal([], set_type)
+	| hd::tl -> 
+		if contains set hd 
+		then intersect tl set
+		else intersect tl (remove items set_type hd)
+;;
+
+(*	Effettua l'operazione di sottrazione di insiemi: 
+ *	toglie gli elementi di ls presenti in src e restituisce il set risultante
+ *)
+let rec setdiff src ls = 
+	let items, set_type = match src with SetVal(ls, t) -> ls, t in
+	match ls with
+	| [] -> src
+	| hd::tl -> 
+		if contains src hd 
+		then setdiff (remove items set_type hd) tl
+		else setdiff src tl
+;;
 
 (*============= Valutazione di exp =============*)
 (*Prende in input l'espressione e ed un ambiente r (istanziato con il tipo evT)*) 
@@ -326,7 +379,6 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 		(*	aggiunge una lista di espressioni al set, controllando di non inserire duplicati
 		 *	e con typecheck
 		 *)
-		let cons = fun x ls -> x::ls in (*necessaria solo perchè il cons tra evT non funziona bene*)
 		let rec addlist set ls = match ls with
 			(*list finita, ritorno il SetVal costruito*)
 			| [] -> set
@@ -338,7 +390,7 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 						| SetVal(items, set_type) ->
 							(*typecheck: il tipo del set deve combaciare con l'elemento*)
 							if typecheck set_type el
-							then addlist (setbuild (String(set_type)) (cons el items)) tl
+							then addlist (setbuild (String(set_type)) ([el]@items)) tl
 							else failwith("type mismatch within elements")
 						| _ -> failwith("not a set")
 					)
@@ -366,19 +418,52 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 	| Subset(a, b) -> (match eval a r, eval b r with 
 		| SetVal(_,_), SetVal(_,_) -> subset (eval a r) (eval b r)
 		| _ -> failwith("either one is not a set"))
-	| SetMin(set) -> (match eval set r with
-		| SetVal(items, set_type) -> min items None)
-	| SetMax(set) -> (match eval set r with
-		| SetVal(items, set_type) -> min items None)
+	| SetMin(set) -> 
+		(match eval set r with
+		| SetVal(items, set_type) -> min items Unbound
+		| _ -> failwith("not a set"))
+	| SetMax(set) -> 
+		(match eval set r with
+		| SetVal(items, set_type) -> min items Unbound
+		| _ -> failwith("not a set"))
+	(*effettua l'unione di set1 e set2, se sono dello stesso tipo*)
+	| Merge(set1, set2) -> (match eval set1 r, eval set2 r with
+		| SetVal(it1, st1), SetVal(it2, st2) ->
+			if st1 = st2
+			then merge it1 (eval set2 r)
+			else failwith("Type mismatch. Cannot merge")
+		| _,_ -> failwith("either one is not a set")
+		)
+	| Intersect(set1, set2) -> (match eval set1 r, eval set2 r with
+		| SetVal(it1, st1), SetVal(it2, st2) ->
+			if st1 = st2
+			then intersect it1 (eval set2 r)
+			else failwith("Type mismatch. Cannot intersect")
+		| _,_ -> failwith("either one is not a set")
+		)
+	(*Effettua la differenza insiemistica set1 - set2, ovvero il set t.c. for all i in set 1 => i not in set2*)
+	| SetDiff(set1, set2) -> (match eval set1 r, eval set2 r with
+		| SetVal(it1, st1), SetVal(it2, st2) -> 
+			if st1 = st2
+			(*Se i tipi combaciano sottrae set2 da set1*)
+			then setdiff (eval set1 r) it2
+			else failwith("Type mismatch. Cannot subtract Sets")
+		| _,_ -> failwith("either one is not a set")
+		)
 	| _ -> failwith("eval failed")
 ;;
 
+(*empty env*)
 let env0 = emptyenv Unbound;;
-let eset = EmptySet(Estring("int"));;
-let single = Singleton(Estring("Hello"), Estring("string"));;
-let intset = Set([Eint(10);Eint(10);Eint(-1);Eint(6)], Estring("int"));;
-let iset = Set([Eint(10);Eint(10);Eint(-1)], Estring("int"));;
-
-eval eset env0;;
-eval single env0;;
-eval intset env0;;
+(*empty sets*)
+let eint = EmptySet(Estring("int"));;
+let ebool = EmptySet(Estring("bool"));;
+let estr = EmptySet(Estring("string"));;
+(*singletons*)
+let sint = Singleton(Eint(0), Estring("int"));;
+let sbool = Singleton(Ebool(true), Estring("bool"));;
+let sstr = Singleton(Estring("Hello"), Estring("string"));;
+(*sets initialized with a list*)
+let lint = Set([Eint(10);Eint(10);Eint(-1);Eint(6)], Estring("int"));;
+let lbool = Set([Ebool(true);Ebool(false);Ebool(false);Ebool(true);Ebool(true);Ebool(false);Ebool(false)], Estring("bool"));;
+let lstr = Set([Estring("six");Estring("Years");Estring("from");Estring("now");Estring("years");Estring("aaaaaaa")], Estring("string"));;
