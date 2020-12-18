@@ -1,14 +1,14 @@
 (*
 #################################################################
 #																																#
-#																																#
-#																																#
-#																																#
-#																																#
+#		Programmazione II - progetto OcaML - Nicola Vetrini					# 
+#		Estensione dell'interprete del linguaggio presentato a			#
+#		lezione con supporto per stringhe e Set											#
 #																																#
 #################################################################
 *)
 
+(*Apro moduli*)
 open Expression
 open Env
 open Denotable
@@ -31,41 +31,41 @@ let typecheck (s : string) (v : Denotable.evT) : bool = match s with
 (*============= Funzioni primitive =============*)
 (*servono per introdurre più agevolmente il typechecking in eval*)
 let prod x y = if (typecheck "int" x) && (typecheck "int" y)
-	then match (x,y) with (Int(n), Int(u)) -> Int(n*u)
+	then match (x,y) with (Int(n), Int(u)) -> Denotable.Int(n*u)
 	else failwith("Type error");;
 
 let sum x y = if (typecheck "int" x) && (typecheck "int" y)
-	then match (x,y) with (Int(n),Int(u)) -> Int(n+u)
+	then match (x,y) with (Int(n),Int(u)) -> Denotable.Int(n+u)
 	else failwith("Type error");;
 
 let diff x y = if (typecheck "int" x) && (typecheck "int" y)
-	then match (x,y) with (Int(n),Int(u)) -> Int(n-u)
+	then match (x,y) with (Int(n),Int(u)) -> Denotable.Int(n-u)
 	else failwith("Type error");;
 
 let eq x y = if (typecheck "int" x) && (typecheck "int" y)
-	then match (x,y) with (Int(n),Int(u)) -> Bool(n=u)
+	then match (x,y) with (Int(n),Int(u)) -> Denotable.Bool(n=u)
 	else failwith("Type error");;
 
 let minus x = if (typecheck "int" x) 
-	then match x with  Int(n) -> Int(-n)
+	then match x with  Int(n) -> Denotable.Int(-n)
 	else failwith("Type error");;
 
 let iszero x = if (typecheck "int" x)
-	then match x with Int(n) -> Bool(n=0)
+	then match x with Int(n) -> Denotable.Bool(n=0)
 	else failwith("Type error");;
 
 let vel x y = if (typecheck "bool" x) && (typecheck "bool" y)
-	then match (x,y) with (Bool(b),Bool(e)) -> Bool(b || e)
+	then match (x,y) with (Bool(b),Bool(e)) -> Denotable.Bool(b || e)
 	else failwith("Type error");;
 
 let et x y = if (typecheck "bool" x) && (typecheck "bool" y)
-	then match (x,y) with (Bool(b),Bool(e)) -> Bool(b && e)
+	then match (x,y) with (Bool(b),Bool(e)) -> Denotable.Bool(b && e)
 	else failwith("Type error");;
 
 let non x = if (typecheck "bool" x)
 	then match x with
-		| Bool(true) -> Bool(false)
-		| Bool(false) -> Bool(true)
+		| Bool(true) -> Denotable.Bool(false)
+		| Bool(false) -> Denotable.Bool(true)
 	else failwith("Type error");;
 
 
@@ -73,17 +73,17 @@ let non x = if (typecheck "bool" x)
 
 (*Ho aggiunto l'operazione di concatenazione di stringhe con typecheck*)
 let concat s1 s2 = if (typecheck "string" s1) && (typecheck "string" s2)
-	then match (s1, s2) with (String(x), String(y)) -> String(x^y)
+	then match (s1, s2) with (String(x), String(y)) -> Denotable.String(x^y)
 	else failwith("Type error");;
 
 (*Costruisce set con tutti i tipi consentiti, usato con tutti i costruttori di set*)
 let setbuild t ls = 
 	match t with
-	| String(s) -> (
+	| Denotable.String(s) -> (
 		(match s with
-		| "int" -> SetVal(ls, "int")
-		| "bool" -> SetVal(ls, "bool")
-		| "string" -> SetVal(ls, "string")
+		| "int" -> Denotable.SetVal(ls, "int")
+		| "bool" -> Denotable.SetVal(ls, "bool")
+		| "string" -> Denotable.SetVal(ls, "string")
 		| _ -> failwith("Not a valid item type")
 		)
 	)
@@ -94,16 +94,16 @@ let rec drop_x ls x acc = match ls with
 	| [] -> acc
 	| hd::tl ->
 		match hd, x with
-		| Int(a), Int(b) -> if a = b then drop_x tl x acc else drop_x tl x (hd::acc)
-		| Bool(a), Bool(b) -> if a = b then drop_x tl x acc else drop_x tl x (hd::acc)
-		| String(a), String(b) -> if a = b then drop_x tl x acc else drop_x tl x (hd::acc)
+		| Denotable.Int(a), Denotable.Int(b) -> if a = b then drop_x tl x acc else drop_x tl x (hd::acc)
+		| Denotable.Bool(a), Denotable.Bool(b) -> if a = b then drop_x tl x acc else drop_x tl x (hd::acc)
+		| Denotable.String(a), Denotable.String(b) -> if a = b then drop_x tl x acc else drop_x tl x (hd::acc)
 		| _ -> failwith("not a valid type")
 ;;
 
 (*Di seguito implemento le operazioni su Set*)
 let contains set elem =
 	match set with
-	| SetVal(items, set_type) -> 
+	| Denotable.SetVal(items, set_type) -> 
 		(let rec lookup ls x =
 			match ls with
 			| [] -> false
@@ -120,8 +120,8 @@ let insert items set_type newel =
 	if typecheck set_type newel
 	(*Se lo sono inserisco l'elemento, se non era già contenuto nel Set*)
 	then if contains (SetVal(items, set_type)) newel
-		then 	(print_endline "Element already in the set"; SetVal(items, set_type))
-		else SetVal(newel::items, set_type)
+		then 	(print_endline "Element already in the set"; Denotable.SetVal(items, set_type))
+		else Denotable.SetVal(newel::items, set_type)
 	else failwith("Type mismatch")
 ;;
 
@@ -130,8 +130,8 @@ let remove items set_type x =
 	if typecheck set_type x then
 		(*Se x è nel Set, lo rimuovo*)
 		if contains (SetVal(items, set_type)) x
-			then SetVal(drop_x items x [], set_type)
-			else (print_endline "Element not in the set"; SetVal(items, set_type))
+			then Denotable.SetVal(drop_x items x [], set_type)
+			else (print_endline "Element not in the set"; Denotable.SetVal(items, set_type))
 	else failwith("Type mismatch")
 ;;
 
@@ -140,24 +140,24 @@ let rec subset a ta b tb =
 		(*controllo sui tipi*)
 		if ta = tb 
 		then match a with
-			| SetVal(items, set_type) -> 
+			| Denotable.SetVal(items, set_type) -> 
 				(match items with
 				(*Se a è il Set vuoto, allora è sottoinsieme di b*)
-				| [] -> Bool(true)
+				| [] -> Denotable.Bool(true)
 				| hd::tl ->
 					(*Se hd è in b allora a può essere sottoinsieme: chiamo sulla coda della lista*)
 					if contains b hd
 					then subset (SetVal(tl, set_type)) ta b tb
 					(*Altrimenti non può esserlo*)
-					else Bool(false)
+					else Denotable.Bool(false)
 				)
 			| _ -> failwith("not a set")
-		else Bool(false)
+		else Denotable.Bool(false)
 ;;
 
 let lt x y = match x, y with
-	| Int(a), Int(b) -> a < b
-	| String(s1), String(s2) -> s1 < s2
+	| Denotable.Int(a), Denotable.Int(b) -> a < b
+	| Denotable.String(s1), Denotable.String(s2) -> s1 < s2
 	| _ -> failwith("total ordering not defined on this type")
 
 (*Ritorna il minimo della lista di evT passata come parametro, m se vuota*)
@@ -168,7 +168,7 @@ let rec min items m = match items with
 		 *	Altrimenti aggiorno minimo se hd < m e chiamo sulla coda
 		 *	Altrimenti chiamo sulla coda senza aggiornare il minimo
 		 *)
-		if (m = Unbound) || (lt hd m)
+		if (m = Denotable.Unbound) || (lt hd m)
 		then min tl hd
 		else min tl m
 ;;
@@ -181,7 +181,7 @@ let rec max items m = match items with
 		 *	Altrimenti aggiorno massimo se m < hd e chiamo sulla coda
 		 *	Altrimenti chiamo sulla coda senza aggiornare il massimo
 		 *)
-		if (m = Unbound) || (lt m hd)
+		if (m = Denotable.Unbound) || (lt m hd)
 		then max tl hd
 		else max tl m
 ;;
@@ -191,7 +191,7 @@ let rec max items m = match items with
  *	sulla coda della lista
  *)
 let rec merge l1 set = 
-	let items, set_type = match set with SetVal(ls, t) -> ls, t in
+	let items, set_type = match set with Denotable.SetVal(ls, t) -> ls, t in
 	match l1 with
 	| [] -> set
 	| hd::tl -> 
@@ -205,9 +205,9 @@ let rec merge l1 set =
  *	sulla coda della lista
  *)
 let rec intersect l1 set =
-	let items, set_type = match set with SetVal(ls, t) -> ls, t in
+	let items, set_type = match set with Denotable.SetVal(ls, t) -> ls, t in
 	match l1 with
-	| [] -> SetVal([], set_type)
+	| [] -> Denotable.SetVal([], set_type)
 	| hd::tl -> 
 		if contains set hd 
 		then intersect tl set
@@ -218,7 +218,7 @@ let rec intersect l1 set =
  *	toglie gli elementi di ls presenti in src e restituisce il set risultante
  *)
 let rec setdiff src ls = 
-	let items, set_type = match src with SetVal(ls, t) -> ls, t in
+	let items, set_type = match src with Denotable.SetVal(ls, t) -> ls, t in
 	match ls with
 	| [] -> src
 	| hd::tl -> 
@@ -229,9 +229,9 @@ let rec setdiff src ls =
 
 (*Converte un esprimibile nell'espressione corrispondente*)
 let getExp el = match el with
-	| Int(x) -> Eint(x)
-	| Bool(x) -> Ebool(x)
-	| String(x) -> Estring(x)
+	| Denotable.Int(x) -> Expression.Eint(x)
+	| Bool(x) -> Expression.Ebool(x)
+	| String(x) -> Expression.Estring(x)
 	| _ -> failwith("not a valid type")
 ;;
 
@@ -244,7 +244,7 @@ let rec listexp ls acc = match ls with
 (*============= Valutazione di exp =============*)
 (*Prende in input l'espressione e ed un ambiente r (istanziato con il tipo evT)*) 
 (*Restituisce un valore esprimibile (tipo evT)*)
-let rec eval (e : exp) (r : evT env) : evT = match e with
+let rec eval (e : Expression.exp) (r : Denotable.evT Env.env) : Denotable.evT = match e with
 	| Eint n -> Int n
 	| Ebool b -> Bool b
 	| IsZero a -> iszero (eval a r)
