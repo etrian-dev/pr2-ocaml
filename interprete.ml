@@ -105,6 +105,24 @@ type evT =
 	(*closure: <ide del param. formale, corpo della funzione, ambiente alla dichiarazione>*)
 	and evFun = ide * exp * evT env
 
+(*Funzione da evT a stringhe*)
+let rec string_of_evT obj = match obj with
+	| Int(x) -> "Int "^(string_of_int x)
+	| Bool(x) -> "Bool "^(string_of_bool x)
+	| String(x) -> "String \""^x^"\""
+	| Unbound -> "Unbound"
+	| UnboundInt -> "UnboundInt"
+	| UnboundBool -> "UnboundBool"
+	| UnboundString -> "UnboundString"
+	| SetVal(items, set_type) ->
+			let rec to_string ls = match ls with
+				| [] -> ""
+				| h::[] -> string_of_evT h
+				| h::t -> (string_of_evT h)^", "^(to_string t)
+			in "SetVal(["^(to_string items)^"], "^set_type^")\n"
+	| _ -> failwith("not supported")
+;;
+
 (*============= RTS =============*)
 (*type checking (dinamico)*)
 let typecheck (s : string) (v : evT) : bool = 
@@ -660,3 +678,8 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 		| _,_ -> failwith("either pred is not a function or not applied to a set")
 		)
 ;;
+
+(*	Funzione di supporto per stampare la valutazione 
+ *	dell'espressione e valutata nell'ambiente env
+ *)
+let print_exp e env = print_endline (string_of_evT (eval e env));;
