@@ -52,6 +52,7 @@ type exp =
 		| Set of (exp list) * exp
 		(*operazioni su Set*)
 		| IsEmpty of exp
+		| Size of exp
 		| Contains of exp * exp
 		| Insert of exp * exp
 		| Remove of exp * exp
@@ -492,6 +493,19 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 		| SetVal(ls, _) -> Bool(false)
 		| _ -> failwith("Error: not a Set")
 		)
+	(*Restituisce la cardinalità del Set sotto forma di Int*)
+	| Size(set) -> (match eval set r with
+		| SetVal(items, set_type) -> 
+			if (eval (IsEmpty(set)) r) = Bool(true) 
+			then Int(0)
+			else 
+				let etail = (match items with 
+				| [] -> []
+				| h::t -> listexp t []
+				) 
+				in eval (Sum(Eint(1), Size(Set(etail, Estring(set_type))))) r
+		| _ -> failwith("Error: not a Set")
+		)
 	(*	Contains viene valutata Bool(true) se set contiene elem, Bool(false) altrimenti
 	 *	Se non è un Set invece lancia eccezione
 	 *)
@@ -518,7 +532,7 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 		)
 	(*Ritorna il minimo del Set, oppure Unbound[Type] se il set è vuoto*)
 	| SetMin(set) -> (match eval set r with
-		| SetVal(items, set_type) as s ->
+		| SetVal(items, set_type) ->
 			(*Prima controllo che il set sia ben formato*)
 			(*A seconda del tipo scelgo il valore Unbound da ritornare di default*)
 			let default = (match set_type with
@@ -530,7 +544,7 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 		| _ -> failwith("Error: not a set"))
 	(*Ritorna il massimo del Set, oppure Unbound[Type] se il set è vuoto*)
 	| SetMax(set) -> (match eval set r with
-		| SetVal(items, set_type) as s ->
+		| SetVal(items, set_type) ->
 			(*A seconda del tipo scelgo il valore Unbound da ritornare di default*)
 			let default = (match set_type with
 					| "int" -> UnboundInt
