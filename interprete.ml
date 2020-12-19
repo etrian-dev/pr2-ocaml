@@ -90,7 +90,6 @@ type evT =
 	 *	non è possibile valutarla correttamente
 	 *)
 	| RecFunVal of ide * evFun
-	| Unbound
 	(*============= Le modifiche apportate =============*)
 	(*Ho aggiunto le stringhe ai tipi denotabili*)
 	| String of string
@@ -98,14 +97,16 @@ type evT =
 	 *	il secondo campo della tupla (evT) è il tipo del Set
 	 *)
 	| SetVal of (evT list) * string
-	(*Valori unbound specifici per i tipi, usati nella valutazione di SetMin e SetMax*)
+	(*Valore Unbound + Unbound specifici per i tipi, usati nella valutazione di SetMin e SetMax*)
+	| Unbound
 	| UnboundInt
 	| UnboundBool
 	| UnboundString
 	(*closure: <ide del param. formale, corpo della funzione, ambiente alla dichiarazione>*)
 	and evFun = ide * exp * evT env
 
-(*Funzione da evT a stringhe*)
+(*Funzione da evT a stringhe, usata per stampare risultato di eval*)
+(*Non stampo FunVal perchè equivale a valutarla*)
 let rec string_of_evT obj = match obj with
 	| Int(x) -> "Int "^(string_of_int x)
 	| Bool(x) -> "Bool "^(string_of_bool x)
@@ -119,7 +120,7 @@ let rec string_of_evT obj = match obj with
 				| [] -> ""
 				| h::[] -> string_of_evT h
 				| h::t -> (string_of_evT h)^", "^(to_string t)
-			in "SetVal(["^(to_string items)^"], "^set_type^")\n"
+			in "SetVal(["^(to_string items)^"], "^set_type^")"
 	| _ -> failwith("not supported")
 ;;
 
@@ -254,7 +255,8 @@ let contains (set : evT) (elem : evT) : bool =
 				(*typecheck per assicurarmi che l'elemento cercato abbia lo stesso tipo del set*)
 				if typecheck set_type elem
 				then if hd = x then true else lookup tl x
-				else false (*Tipi diversi, restituisco false invece di dare errore di tipo*)
+				(*Tipi diversi, restituisco false + warning*)
+				else (print_endline "Warning: type mismatch";false)
 			in lookup items elem
 		)
 	| _ -> failwith("Error: not a Set")
@@ -300,7 +302,7 @@ let rec subset (a : evT) (ta : string) (b : evT) (tb : string) =
 			)
 		| _ -> failwith("Error: not a set")
 	(*Se i set sono di tipi diversi allora sicuramente è false*)
-	else false
+	else (print_endline "warning: type mismatch"; false)
 ;;
 
 (*Funzione ausiliaria per confrontare elementi*)
