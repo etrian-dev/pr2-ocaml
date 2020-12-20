@@ -691,7 +691,7 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 						(*Inserisco nella valutazione del set della coda il valore v*)
 						in match maptail with
 							| SetVal(items, set_type) -> insert items set_type v
-							| _ -> failwith("Error: set ⇏ SetVal(_,_)")
+							| _ -> failwith("Error: set  SetVal(_,_)")
 				)
 		| _,_ -> failwith("Error: either pred ⇏ FunVal(_,_,_) or set ⇏ SetVal(_,_)")
 		)
