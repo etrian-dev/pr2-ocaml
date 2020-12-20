@@ -1,10 +1,10 @@
 (*
 #################################################################
 #																																#
-#																																#
-#																																#
-#																																#
-#																																#
+#		PRG2B - Secondo progetto - Nicola Vetrini - matr 600199			#
+#		Estensione linguaggio didattico con Set e stringhe, con			#
+#		implementazione delle relative operazioni ed estensione			# 
+#		del typechecking dinamico.																	#
 #																																#
 #################################################################
 *)
@@ -105,25 +105,6 @@ type evT =
 	(*closure: <ide del param. formale, corpo della funzione, ambiente alla dichiarazione>*)
 	and evFun = ide * exp * evT env
 
-(*Funzione da evT a stringhe, usata per stampare risultato di eval*)
-(*Non stampo FunVal perchè equivale a valutarla*)
-let rec string_of_evT obj = match obj with
-	| Int(x) -> "Int "^(string_of_int x)
-	| Bool(x) -> "Bool "^(string_of_bool x)
-	| String(x) -> "String \""^x^"\""
-	| Unbound -> "Unbound"
-	| UnboundInt -> "UnboundInt"
-	| UnboundBool -> "UnboundBool"
-	| UnboundString -> "UnboundString"
-	| SetVal(items, set_type) ->
-			let rec to_string ls = match ls with
-				| [] -> ""
-				| h::[] -> string_of_evT h
-				| h::t -> (string_of_evT h)^", "^(to_string t)
-			in "SetVal(["^(to_string items)^"], "^set_type^")"
-	| _ -> failwith("not supported")
-;;
-
 (*============= RTS =============*)
 (*type checking (dinamico)*)
 let typecheck (s : string) (v : evT) : bool = 
@@ -167,41 +148,58 @@ let set_check (set : evT) : bool =
 (*============= Funzioni primitive =============*)
 (*servono per introdurre più agevolmente il typechecking in eval*)
 let prod x y = if (typecheck "int" x) && (typecheck "int" y)
-	then match (x,y) with (Int(n), Int(u)) -> Int(n*u)
+	then match (x,y) with 
+		| (Int(n), Int(u)) -> Int(n*u)
+		| _,_ -> failwith("Error: cannot apply to the operands")
 	else failwith("Type error");;
 
 let sum x y = if (typecheck "int" x) && (typecheck "int" y)
-	then match (x,y) with (Int(n),Int(u)) -> Int(n+u)
+	then match (x,y) with
+		| (Int(n),Int(u)) -> Int(n+u)
+		| _,_ -> failwith("Error: cannot apply to the operands")
 	else failwith("Type error");;
 
 let diff x y = if (typecheck "int" x) && (typecheck "int" y)
-	then match (x,y) with (Int(n),Int(u)) -> Int(n-u)
+	then match (x,y) with 
+		| (Int(n),Int(u)) -> Int(n-u)
+		| _,_ -> failwith("Error: cannot apply to the operands")
 	else failwith("Type error");;
 
 let eq x y = if (typecheck "int" x) && (typecheck "int" y)
-	then match (x,y) with (Int(n),Int(u)) -> Bool(n=u)
+	then match (x,y) with 
+		| (Int(n),Int(u)) -> Bool(n=u)
+		| _,_ -> failwith("Error: cannot apply to the operands")
 	else failwith("Type error");;
 
 let minus x = if (typecheck "int" x) 
-	then match x with  Int(n) -> Int(-n)
+	then match x with 
+		| Int(n) -> Int(-n)
+		| _ -> failwith("Error: cannot apply to the operand")
 	else failwith("Type error");;
 
 let iszero x = if (typecheck "int" x)
-	then match x with Int(n) -> Bool(n=0)
+	then match x with 
+		| Int(n) -> Bool(n=0)
+		| _ -> failwith("Error: cannot apply to the operand")
 	else failwith("Type error");;
 
 let vel x y = if (typecheck "bool" x) && (typecheck "bool" y)
-	then match (x,y) with (Bool(b),Bool(e)) -> Bool(b || e)
+	then match (x,y) with 
+		| (Bool(b),Bool(e)) -> Bool(b || e)
+		| _,_ -> failwith("Error: cannot apply to the operands")
 	else failwith("Type error");;
 
 let et x y = if (typecheck "bool" x) && (typecheck "bool" y)
-	then match (x,y) with (Bool(b),Bool(e)) -> Bool(b && e)
+	then match (x,y) with 
+		| (Bool(b),Bool(e)) -> Bool(b && e)
+		| _,_ -> failwith("Error: cannot apply to the operands")
 	else failwith("Type error");;
 
 let non x = if (typecheck "bool" x)
 	then match x with
 		| Bool(true) -> Bool(false)
 		| Bool(false) -> Bool(true)
+		| _ -> failwith("Error: cannot apply to the operand")
 	else failwith("Type error");;
 
 
@@ -209,7 +207,9 @@ let non x = if (typecheck "bool" x)
 
 (*Concatena s1 ed s2 con typecheck*)
 let concat s1 s2 = if (typecheck "string" s1) && (typecheck "string" s2)
-	then match (s1, s2) with (String(x), String(y)) -> String(x^y)
+	then match (s1, s2) with 
+		| (String(x), String(y)) -> String(x^y)
+		| _,_ -> failwith("Error: cannot apply to the operands")
 	else failwith("Type error");;
 
 (*	Costruisce set il set di tipo t contenente gli elementi nella lista ls,
@@ -345,8 +345,12 @@ let rec max items m = match items with
  *	sulla coda della lista finchè non è vuota
  *)
 let rec merge l1 set = 
-	let items, set_type = match set with SetVal(ls, t) -> ls, t in
-	match l1 with
+	let items, set_type = 
+		(match set with 
+		| SetVal(ls, t) -> ls, t
+		| _ -> failwith("not a set")
+		)
+	in match l1 with
 	| [] -> set
 	| hd::tl -> 
 		if contains set hd 
@@ -379,8 +383,11 @@ let rec intersect l1 l2 set_type =
  *	toglie gli elementi di to_rm presenti in src e restituisce il set risultante
  *)
 let rec setdiff src to_rm = 
-	let items, set_type = match src with SetVal(l, t) -> l, t in
-	match to_rm with
+	let items, set_type = 
+		match src with 
+			| SetVal(l, t) -> l, t
+			| _ -> failwith("Error: not a set")
+	in match to_rm with
 	| [] -> src
 	| hd::tl ->
 	(*	Se il set sorgente contiene l'elemento hd, allora chiamo la
@@ -559,6 +566,7 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 					| "int" -> UnboundInt
 					| "bool" -> UnboundBool
 					| "string" -> UnboundString
+					| _ -> failwith("Error: not a valid set type")
 				)
 			in min items default
 		| _ -> failwith("Error: not a set"))
@@ -570,6 +578,7 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 					| "int" -> UnboundInt
 					| "bool" -> UnboundBool
 					| "string" -> UnboundString
+					| _ -> failwith("Error: not a valid set type")
 				)
 			in max items default
 		| _ -> failwith("Error: not a set"))
@@ -579,7 +588,7 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 			if type_1 = type_2
 			then merge it1 (eval set2 r)
 			else failwith("Error: type mismatch. Cannot merge")
-		| _,_ -> failwith("Error: either one is not a set")
+		| _,_ -> failwith("Error: either one is not a set. Cannot merge")
 		)
 	(*Valuta l'intersezione di set1 e set2 se il loro tipo coincide*)
 	| Intersect(set1, set2) -> (match eval set1 r, eval set2 r with
@@ -587,7 +596,7 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 			if type_1 = type_2
 			then intersect it1 it2 type_1
 			else failwith("Error: type mismatch. Cannot intersect")
-		| _,_ -> failwith("Error: either one is not a set")
+		| _,_ -> failwith("Error: either one is not a set. Cannot intersect")
 		)
 	(*	Effettua la differenza insiemistica set1 - set2, ovvero
 	 *	il set {i : i ∊ set1 => i ∉ set2}
@@ -617,11 +626,15 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 						 *	la chiamata ricorsiva devo ottenere la lista di exp da una evT list ed a 	
 						 *	questo scopo ho definito la funzione listexp
 						 *)
-						if (eval (FunCall(pred, getExp hd)) decEnv) = Bool(true)
+						let res = eval (FunCall(pred, getExp hd)) decEnv in
+						if typecheck "bool" res && res = Bool(true)
 						then eval (Forall(pred, Set(listexp tl [], getExp (String(set_type))))) r
-						else Bool(false)
+						else 	
+							if res = Bool(false) 
+							then Bool(false) 
+							else failwith("Error: pred ⇏ Bool(_)")
 				)
-		| _,_ -> failwith("either pred is not a boolean function or not applied to a set")
+		| _,_ -> failwith("Error: either pred ⇏ FunVal(_,_,_) or set ⇏ SetVal(_,_)")
 		)
 	(*Restituisce Bool(true) sse esiste almeno un elemento del Set che soddisfa il predicato*)
 	| Exists(pred, set) -> (match eval pred r, eval set r with 
@@ -629,15 +642,19 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 				(match items with
 				(*Se il set è vuoto, allora non esiste, quindi restituisce Bool(false)*)
 				| [] -> Bool(false)
-				| hd::tl -> 
+				| hd::tl ->
+						let res = eval (FunCall(pred, getExp hd)) decEnv in
 						(*Codice analogo alla ForAll, ma con diverse condizioni*)
-						if (eval (FunCall(pred, getExp hd)) decEnv) = Bool(true)
+						if typecheck "bool" res && res = Bool(true)
 						(*Se trovo un elemento che soddisfa pred, restituisco Bool(true)*)
 						then Bool(true)
 						(*Altrimenti continuo la ricerca sul resto degli elementi*)
-						else eval (Exists(pred, Set(listexp tl [], getExp (String(set_type))))) r
+						else 
+							if res = Bool(false) 
+							then eval (Exists(pred, Set(listexp tl [], getExp (String(set_type))))) r 
+							else failwith("Error: pred ⇏ Bool(_)")
 				)
-		| _,_ -> failwith("either pred is not a boolean function or not applied to a set")
+		| _,_ -> failwith("Error: either pred ⇏ FunVal(_,_,_) or set ⇏ SetVal(_,_)")
 		)
 	(*Restituisce l'insieme di elementi che soddisfano pred*)
 	| Filter(pred, set) -> (match eval pred r, eval set r with 
@@ -646,17 +663,16 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 				(*Se il set è vuoto, restituisce il set vuoto*)
 				| [] -> SetVal([], set_type)
 				| hd::tl ->
-						let filtertail = 
-							eval (Filter(pred, Set(listexp tl [], getExp (String(set_type))))) r
-						in if (eval (FunCall(pred, getExp hd)) decEnv) = Bool(true)
+						let filtertail = eval (Filter(pred, Set(listexp tl [], getExp (String(set_type))))) r in 
+						if (eval (FunCall(pred, getExp hd)) decEnv) = Bool(true)
 						(*Se hd soddisfa il predicato, allora lo aggiungo al set e filtro il resto del set*)
 						then match filtertail with
 							| SetVal(items, set_type) -> insert items set_type hd
-							| _ -> failwith("Error: not a set")
+							| _ -> failwith("Error: set ⇏ SetVal(_,_)")
 						(*Altrimenti continuo a filtrare il resto degli elementi*)
 						else filtertail
 				)
-		| _,_ -> failwith("either pred is not a function or not applied to a set")
+		| _,_ -> failwith("Error: either pred ⇏ FunVal(_,_,_) or set ⇏ SetVal(_,_)")
 		)
 	(*Restituisce il Set in cui ad ogni elemento è stata applicata la funzione pred*)
 	| Map(pred, set) -> (match eval pred r, eval set r with 
@@ -675,10 +691,29 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 						(*Inserisco nella valutazione del set della coda il valore v*)
 						in match maptail with
 							| SetVal(items, set_type) -> insert items set_type v
-							| _ -> failwith("Error: not a set")
+							| _ -> failwith("Error: set ⇏ SetVal(_,_)")
 				)
-		| _,_ -> failwith("either pred is not a function or not applied to a set")
+		| _,_ -> failwith("Error: either pred ⇏ FunVal(_,_,_) or set ⇏ SetVal(_,_)")
 		)
+;;
+
+(*Funzione da evT a stringhe, usata per stampare risultato di eval*)
+(*Non stampo FunVal perchè equivale a valutarla*)
+let rec string_of_evT obj = match obj with
+	| Int(x) -> "Int "^(string_of_int x)
+	| Bool(x) -> "Bool "^(string_of_bool x)
+	| String(x) -> "String \""^x^"\""
+	| Unbound -> "Unbound"
+	| UnboundInt -> "UnboundInt"
+	| UnboundBool -> "UnboundBool"
+	| UnboundString -> "UnboundString"
+	| SetVal(items, set_type) ->
+			let rec to_string ls = match ls with
+				| [] -> ""
+				| h::[] -> string_of_evT h
+				| h::t -> (string_of_evT h)^", "^(to_string t)
+			in "SetVal(["^(to_string items)^"], "^set_type^")"
+	| _ -> failwith("not supported")
 ;;
 
 (*	Funzione di supporto per stampare la valutazione 
