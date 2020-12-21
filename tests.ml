@@ -1,4 +1,5 @@
-(*Apro il modulo dell'interprete*)
+(*Apro il modulo dell'interprete e del linguaggio*)
+open Linguaggio;;
 open Interprete;;
 
 (* =================  Test generici  ================= *)

@@ -1,8 +1,10 @@
 all: test
 	ocamlrun ./test
-test: interprete.cmo tests.cmo
-	ocamlc interprete.cmo tests.cmo -o test
-tests.cmo: interprete.cmo tests.ml
-	ocamlc -c tests.ml
-interprete.cmo: interprete.ml
-	ocamlc -c interprete.ml
+test: linguaggio.cmo interprete.cmo tests.cmo
+	ocamlc -o test linguaggio.cmo interprete.cmo tests.cmo
+tests.cmo: linguaggio.cmo interprete.cmo tests.ml
+	ocamlc -c linguaggio.cmo interprete.cmo tests.ml
+interprete.cmo: linguaggio.cmo interprete.ml
+	ocamlc -c linguaggio.cmo interprete.ml
+linguaggio.cmo: linguaggio.ml
+	ocamlc -c linguaggio.ml

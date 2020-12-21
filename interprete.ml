@@ -9,140 +9,33 @@
 #################################################################
 *)
 
-(*============= Identificatori (nomi) =============*)
-(*definisco un identificatore come una stringa*)
-type ide = string;;
-
-(*============= Espressioni =============*)
-(*Ogni espressione legale del linguaggio ha il proprio costruttore*)
-type exp =
-    (*Posso avere costanti intere e booleane*)
-    | Eint of int
-    | Ebool of bool
-    (*posso avere variabili*)
-    | Den of ide 
-    (*varie operazioni aritmetico/logiche*)
-    | Prod of exp * exp
-    | Sum of exp * exp 
-    | Diff of exp * exp 
-    | Eq of exp * exp 
-    | Minus of exp 
-    | IsZero of exp 
-    | Or of exp * exp 
-    | And of exp * exp 
-    | Not of exp		
-    (*expressione condizionale: if guardia then e1 else e2, con guardia Bool*)						
-    | Ifthenelse of exp * exp * exp
-    | Let of ide * exp * exp
-    (*dichiarazione di funzione non ricorsiva*) 
-    | Fun of ide * exp
-    (*dichiarazione di funzione ricorsiva*) 
-    | Letrec of ide * exp * exp
-    (*chiamata di funzione*)
-    | FunCall of exp * exp
-    (*============= Le modifiche apportate =============*)
-    (*estendo il linguaggio con stringhe, concat. di stringhe e Set (con annotazione di tipo)*)
-		| Estring of string
-		| Concat of exp * exp
-		(*	Ho tre costruttori di Set: set vuoto (tipato), set contenente un singolo elemento
-		*	e il costruttore contenente una lista di espressioni
-		*)
-		| EmptySet of exp
-		| Singleton of exp * exp
-		| Set of (exp list) * exp
-		(*operazioni su Set*)
-		| IsEmpty of exp
-		| Size of exp
-		| Contains of exp * exp
-		| Insert of exp * exp
-		| Remove of exp * exp
-		| Subset of exp * exp
-		| SetMin of exp
-		| SetMax of exp
-		| Merge of exp * exp
-		| Intersect of exp * exp
-		| SetDiff of exp * exp
-		(*Operatori funzionali su set*)
-		| Forall of exp * exp
-		| Exists of exp * exp
-		| Filter of exp *exp
-		| Map of exp * exp
-;;
-
-(*============= Ambiente =============*)
-(*implementazione dell'ambiente polimorfo come funzione*)
-type 't env = ide -> 't;;
-(*associo all'ambiente vuoto la funzione che restituisce v*)
-let emptyenv (v : 't) = function x -> v;;
-(*la funzione ambiente (r) applicata all'identificatore i, ovvero env ▷ i => v*)
-let applyenv (r : 't env) (i : ide) = r i;;
-(*crea il legame tra l'identificatore i ed il valore v, ovvero env1 = env[v/i]*)
-let bind (r : 't env) (i : ide) (v : 't) = 
-  function x -> if x = i then v else applyenv r x;;
-
-(*============= Tipi esprimibili =============*)
-type evT = 
-	| Int of int
-	| Bool of bool
-	(*una funzione è una chiusura, la tripla definita sotto *)  
-	| FunVal of evFun 
-	(*	Una funzione ricorsiva ha bisogno anche del suo nome nella chiusura, altrimenti
-	 *	non è possibile valutarla correttamente
-	 *)
-	| RecFunVal of ide * evFun
-	(*============= Le modifiche apportate =============*)
-	(*Ho aggiunto le stringhe ai tipi denotabili*)
-	| String of string
-	(*	Ho aggiunto i Set ai valori denotabili
-	 *	il secondo campo della tupla (evT) è il tipo del Set
-	 *)
-	| SetVal of (evT list) * string
-	(*Valore Unbound + Unbound specifici per i tipi, usati nella valutazione di SetMin e SetMax*)
-	| Unbound
-	| UnboundInt
-	| UnboundBool
-	| UnboundString
-	(*closure: <ide del param. formale, corpo della funzione, ambiente alla dichiarazione>*)
-	and evFun = ide * exp * evT env
+open Linguaggio;;
 
 (*============= RTS =============*)
 (*type checking (dinamico)*)
-let typecheck (s : string) (v : evT) : bool = 
-	match s with
-	| "int" -> (match v with
-			| Int(_) -> true
-			| _ -> false)
-	| "bool" -> (match v with
-			| Bool(_) -> true
-			| _ -> false)
-	(*Un ulteriore caso del typecheck per il tipo String*)
-	| "string" -> (match v with 
-		| String(_) -> true
-		| _ -> false)
-	| _ -> failwith("not a valid type");;
-
-(*	Funzione ausiliaria per controllare che il tipo di ogni elemento di ls
- *	Coincida con quello del Set
- *)
-let rec list_check (t : string) (l : evT list) : bool = 
- 	match l with
-	| [] -> true (*caso base: vero per la lista vuota*)
-	| hd::tl -> 
-		if typecheck t hd
-		then list_check t tl (*Se è vero per la testa, allora controllo la coda*)
-		else false (*Altrimenti esiste un elemento di tipo diverso da t*)
-;;
-
-(*	Funzione ausiliaria per controllare che il SetVal sia valido, ovvero che abbia tipo
- *	int, bool o string e tutti i suoi elementi abbiano tale tipo
- *)
-let set_check (set : evT) : bool = 
-	match set with
-	| SetVal(items, set_type) ->
-		if	((set_type = "int") || (set_type = "bool") || (set_type = "string"))
-				&& (list_check set_type items) then true
-			else false
-	| _ -> failwith("Error: not a SetVal")
+let rec typecheck (s : string) (v : evT) : bool =
+	(*Funzione ausiliaria per fare typecheck su liste di valori*)
+	let rec list_check (t : string) (l : evT list) : bool = 
+		match l with
+		| [] -> true (*caso base: vero per la lista vuota*)
+		| hd::tl -> 
+			if typecheck t hd
+			then list_check t tl (*Se è vero per la testa, allora controllo la coda*)
+			else false (*Altrimenti esiste un elemento di tipo diverso da t*)
+	in match v with
+	| Int(_) -> s = "int"
+	| Bool(_) -> s = "bool"
+	| String(_) -> s = "string"
+	| SetVal(items, set_type) -> 
+		(*
+			Controllo che il tipo del set sia int, bool o string 
+			e che tutti gli elementi siano di tale tipo:
+			se tali condizioni sono soddisfatte allora ho un SetVal valido,
+			altrimenti non lo è
+		*)
+		((set_type = "int") || (set_type = "bool") || (set_type = "string"))
+		&& (list_check set_type items)
+	| _ -> failwith("Error: type not supported by the typechecker")
 ;;
 
 (*============= Funzioni primitive =============*)
@@ -219,7 +112,7 @@ let concat s1 s2 = if (typecheck "string" s1) && (typecheck "string" s2)
 let setbuild (t : evT) (ls : evT list) : evT =
  	match t with
 	| String(s) -> 
-		if set_check (SetVal(ls, s))
+		if typecheck s (SetVal(ls, s))
 		then SetVal(ls, s) 
 		else failwith("Error: not a valid Set")
 	(*Se non ho una stringa di tipo errore*)
@@ -699,7 +592,8 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 
 (*Funzione da evT a stringhe, usata per stampare risultato di eval*)
 (*Non stampo FunVal perchè equivale a valutarla*)
-let rec string_of_evT obj = match obj with
+let rec string_of_evT (obj : evT) : string = 
+	match obj with
 	| Int(x) -> "Int "^(string_of_int x)
 	| Bool(x) -> "Bool "^(string_of_bool x)
 	| String(x) -> "String \""^x^"\""
@@ -719,4 +613,5 @@ let rec string_of_evT obj = match obj with
 (*	Funzione di supporto per stampare la valutazione 
  *	dell'espressione e valutata nell'ambiente env
  *)
-let print_exp e env = print_endline (string_of_evT (eval e env));;
+let print_exp (e : exp) (r : evT env) : unit  = 
+	print_endline (string_of_evT (eval e r));;
