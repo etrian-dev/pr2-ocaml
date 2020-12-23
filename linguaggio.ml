@@ -1,3 +1,14 @@
+(*
+#################################################################
+#																																#
+#		PRG2B - Secondo progetto - Nicola Vetrini - matr 600199			#
+#		Estensione linguaggio didattico con Set e stringhe, con			#
+#		implementazione delle relative operazioni ed estensione			# 
+#		del typechecking dinamico.																	#
+#																																#
+#################################################################
+*)
+
 (*============= Identificatori (nomi) =============*)
 (*definisco un identificatore come una stringa*)
 type ide = string;;
@@ -40,16 +51,18 @@ type exp =
 		(*Concatena il secondo argomento al primo, se sono entrambe stringhe*)
 		| Concat of exp * exp
 		(*	Ho tre costruttori di Set: 
-				● Set vuoto (tipato)
+				● Set vuoto (con tipo)
 				● Set contenente un singolo elemento (singleton)
 				● Set contenente una lista di elementi (espressioni)
+					Eventuali duplicati nella lista di espressioni sono scartati al momento
+					della valutazione del costruttore
 		*)
 		| EmptySet of exp
 		| Singleton of exp * exp
 		| Set of (exp list) * exp
 		(*============= Operazioni su Set =============*)
 		| IsEmpty of exp
-		| Size of exp (*Cardinalità del Set passato come argomento*)
+		| Size of exp	(*Cardinalità del Set passato come argomento*)
 		| Contains of exp * exp
 		| Insert of exp * exp
 		| Remove of exp * exp
@@ -62,7 +75,7 @@ type exp =
 		(*============= Operatori funzionali su Set =============*)
 		| Forall of exp * exp
 		| Exists of exp * exp
-		| Filter of exp *exp
+		| Filter of exp * exp
 		| Map of exp * exp
 ;;
 
@@ -88,17 +101,20 @@ type evT =
 		non è possibile valutarla correttamente
 	*)
 	| RecFunVal of ide * evFun
+
 	(*============= Le modifiche apportate =============*)
 	(*Nuovo denotabile String, risultante dalla valutazione di Estring*)
 	| String of string
 	(*
 		Nuovo denotabile, SetVal, composto da una lista 
-		di denotabili (elementi) e una stringa (il tipo)
+		di denotabili (elementi) e una stringa (il tipo).
+		Se il SetVal è il risultato della valutazione di un espressione, allora
+		è garantito che sia valido
 	*)
 	| SetVal of (evT list) * string
 	(*
-		Valore Unbound e Unbound specifici per i tipi usabili nei Set
-		per la valutazione di SetMin e SetMax
+		Costruttori Unbound e gli Unbound specifici per i tipi usabili nei Set.
+		Unbound con tipo usati per la valutazione di SetMin e SetMax
 	*)
 	| Unbound
 	| UnboundInt

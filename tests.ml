@@ -1,3 +1,14 @@
+(*
+#################################################################
+#																																#
+#		PRG2B - Secondo progetto - Nicola Vetrini - matr 600199			#
+#		Estensione linguaggio didattico con Set e stringhe, con			#
+#		implementazione delle relative operazioni ed estensione			# 
+#		del typechecking dinamico.																	#
+#																																#
+#################################################################
+*)
+
 (*Apro il modulo dell'interprete e del linguaggio*)
 open Linguaggio;;
 open Interprete;;
@@ -26,9 +37,9 @@ print_exp (FunCall(inc1, Den "x")) env1;;
 (* =================  Test per String  ================= *)
 print_endline "(* =================  Test per String  ================= *)";;
 (*dichiara le stringhe "Hello, " e "Ocaml", poi le concatena*)
-print_endline "Concateno le stringhe \"Test\" ed \"OcaML\"";;
 let hi = Estring("Test");;
 let oc = Estring("OcaML");;
+print_endline ("*** Concatenazione di "^(string_of_evT (eval hi env0))^" ed "^(string_of_evT (eval oc env0))^" ***");;
 print_exp (Concat(hi, oc)) env0;;
 
 (* =================  Test per Set  ================= *)
