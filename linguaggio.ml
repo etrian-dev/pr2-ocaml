@@ -35,7 +35,10 @@ type exp =
     | Let of ide * exp * exp
     (*dichiarazione di funzione non ricorsiva*) 
     | Fun of ide * exp
-    (*dichiarazione di funzione ricorsiva*) 
+    (*
+			Dichiarazione di funzione ricorsiva. 
+			Contiene in più anche il nome della funzione
+		*) 
     | Letrec of ide * exp * exp
     (*chiamata di funzione*)
     | FunCall of exp * exp

@@ -26,7 +26,6 @@ let rec typecheck (s : string) (v : evT) : bool =
 	| Int(_) -> s = "int"
 	| Bool(_) -> s = "bool"
 	| String(_) -> s = "string"
-	| FunVal(param, body, decEnv) -> s = "fun"
 	| SetVal(items, set_type) -> 
 		(*
 			Controllo che il tipo del set sia int, bool o string 
@@ -34,8 +33,9 @@ let rec typecheck (s : string) (v : evT) : bool =
 			se tali condizioni sono soddisfatte allora ho un SetVal valido,
 			altrimenti non lo è
 		*)
-		(	(set_type = "int") || (set_type = "bool") || (set_type = "string") || (set_type = "fun"))
-		&& (list_check set_type items)
+		(s = set_type)
+		&& ((set_type = "int") || (set_type = "bool") || (set_type = "string"))
+		&& (list_check s items)
 	| _ -> failwith("Error: type not supported by the typechecker")
 ;;
 
@@ -363,10 +363,10 @@ let rec eval (e : exp) (r : evT env) : evT =
 	(*expr condizionale: if g then (eval e1) else (eval e2)*)
 	| Ifthenelse(guard, e1, e2) -> let g = eval guard r in 
 			if typecheck "bool" g
-			    then if g = Bool(true)
-				        then (eval e1 r) 
-						else (eval e2 r)
-			else failwith ("nonboolean guard")
+			then if g = Bool(true)
+				then eval e1 r 
+				else eval e2 r
+			else failwith ("Error: nonboolean guard")
 	| Let(i, e1, e2) -> (*let i = e1 in e2*)
 	(*r ▷ e1 => v1, poi env[v1/i] ▷ e2 => v2 *)
 		eval e2 (bind r i (eval e1 r))
@@ -537,90 +537,85 @@ let rec eval (e : exp) (r : evT env) : evT =
 		| _,_ -> failwith("Error: either one is not a set")
 		)
 	(*Restituisce Bool(true) sse tutti gli elementi del Set soddisfano il predicato*)
-	| Forall(pred, set) -> (match eval pred r, eval set r with 
-		| FunVal(_,_,decEnv), SetVal(items, set_type) -> 
-				(match items with 
-				(*Se il set è vuoto, allora è vero per definizione*)
+	| Forall(pred, set) -> 
+		(*Valuto il set per fare typechecking*)
+		(
+		try 
+			match eval set r with
+			| SetVal(items, t) ->
+				(match items with
 				| [] -> Bool(true)
-				(*Altrimenti esamino la lista di elementi*)
 				| hd::tl -> 
-						(*	Chiamo la funzione pred, valutandola nell'ambiente di dichiarazione,
-						 *	con argomento hd. Se il risultato è Bool(true), allora proseguo,
-						 *	altrimenti posso dire che esiste un elemento che non soddisfa il
-						 *	predicato. Una particolarità di procedere in questo modo è la necessità
-						 *	di ottenere l'espressione da passare a FunCall a partire dall'esprimibile 
-						 *	hd e lo realizzo con la chiamata di getExp. Analogamente, per effettuare 
-						 *	la chiamata ricorsiva devo ottenere la lista di exp da una evT list ed a 	
-						 *	questo scopo ho definito la funzione listexp
-						 *)
-						let res = eval (FunCall(pred, getExp hd)) decEnv in
-						if typecheck "bool" res && res = Bool(true)
-						then eval (Forall(pred, Set(listexp tl [], getExp (String(set_type))))) r
-						else 	
-							if res = Bool(false) 
-							then Bool(false) 
-							else failwith("Error: pred ⇏ Bool(_)")
+					let res = eval (FunCall(pred, getExp hd)) r in
+						(match res with
+						| Bool(true) ->  eval (Forall(pred, Set(listexp tl [], getExp (String(t))))) r
+						| Bool(false) -> Bool(false)
+						| _ -> failwith("Error: pred ⇏ Bool(_)")
+						)
 				)
-		| _,_ -> failwith("Error: either pred ⇏ FunVal(_,_,_) or set ⇏ SetVal(_,_)")
+			| _ -> failwith("Error: not a set")
+		with
+		| Failure(s) -> failwith(s)
 		)
 	(*Restituisce Bool(true) sse esiste almeno un elemento del Set che soddisfa il predicato*)
-	| Exists(pred, set) -> (match eval pred r, eval set r with 
-		| FunVal(_, _, decEnv), SetVal(items, set_type) -> 
+	| Exists(pred, set) -> 
+		(
+		try 
+			match eval set r with
+			| SetVal(items, t) ->
 				(match items with
-				(*Se il set è vuoto, allora non esiste, quindi restituisce Bool(false)*)
 				| [] -> Bool(false)
-				| hd::tl ->
-						let res = eval (FunCall(pred, getExp hd)) decEnv in
-						(*Codice analogo alla ForAll, ma con diverse condizioni*)
-						if typecheck "bool" res && res = Bool(true)
-						(*Se trovo un elemento che soddisfa pred, restituisco Bool(true)*)
-						then Bool(true)
-						(*Altrimenti continuo la ricerca sul resto degli elementi*)
-						else 
-							if res = Bool(false) 
-							then eval (Exists(pred, Set(listexp tl [], getExp (String(set_type))))) r 
-							else failwith("Error: pred ⇏ Bool(_)")
+				| hd::tl -> 
+					let res = eval (FunCall(pred, getExp hd)) r in
+						(match res with
+						| Bool(true) -> Bool(true)
+						| Bool(false) ->  eval (Exists(pred, Set(listexp tl [], getExp (String(t))))) r
+						| _ -> failwith("Error: pred ⇏ Bool(_)")
+						)
 				)
-		| _,_ -> failwith("Error: either pred ⇏ FunVal(_,_,_) or set ⇏ SetVal(_,_)")
+			| _ -> failwith("Error: not a set")
+		with
+		| Failure(s) -> failwith(s)
 		)
 	(*Restituisce l'insieme di elementi che soddisfano pred*)
-	| Filter(pred, set) -> (match eval pred r, eval set r with 
-		| FunVal(_, _, decEnv), SetVal(items, set_type) -> 
+	| Filter(pred, set) -> 
+		(*Valuto il set per fare typechecking*)
+		(
+		try 
+			match eval set r with
+			| SetVal(items, t) ->
 				(match items with
-				(*Se il set è vuoto, restituisce il set vuoto*)
-				| [] -> SetVal([], set_type)
-				| hd::tl ->
-						let filtertail = eval (Filter(pred, Set(listexp tl [], getExp (String(set_type))))) r in 
-						if (eval (FunCall(pred, getExp hd)) decEnv) = Bool(true)
-						(*Se hd soddisfa il predicato, allora lo aggiungo al set e filtro il resto del set*)
-						then match filtertail with
-							| SetVal(items, set_type) -> insert items set_type hd
-							| _ -> failwith("Error: set ⇏ SetVal(_,_)")
-						(*Altrimenti continuo a filtrare il resto degli elementi*)
-						else filtertail
+				| [] -> SetVal([], t)
+				| hd::tl -> 
+					let res = eval (FunCall(pred, getExp hd)) r in
+						let filtered_tail = Filter(pred, Set(listexp tl [], getExp (String(t)))) in
+						(match res with
+						| Bool(true) -> 
+							eval (Insert(filtered_tail, getExp hd)) r
+						| Bool(false) -> 
+							eval filtered_tail r
+						| _ -> failwith("Error: pred ⇏ Bool(_)")
+						)
 				)
-		| _,_ -> failwith("Error: either pred ⇏ FunVal(_,_,_) or set ⇏ SetVal(_,_)")
+			| _ -> failwith("Error: not a set")
+		with
+		| Failure(s) -> failwith(s)
 		)
 	(*Restituisce il Set in cui ad ogni elemento è stata applicata la funzione pred*)
-	| Map(pred, set) -> (match eval pred r, eval set r with 
-		| FunVal(_, _, decEnv), SetVal(items, set_type) -> 
+	| Map(pred, set) ->
+		(*Valuto il set per fare typechecking*)
+		(
+		try 
+			match eval set r with
+			| SetVal(items, t) ->
 				(match items with
-				(*Se il set è vuoto, restituisce il set vuoto*)
-				| [] -> SetVal([], set_type)
-				| hd::tl ->
-						(*	per comodità il set formato dal resto della lista
-						 *	a cui applico Map lo lego all'identificatore maptail
-						 *)
-						let maptail = 
-							eval (Map(pred, Set(listexp tl [], getExp (String(set_type))))) r
-						(*invece pred(hd) = v*)
-						in let v = (eval (FunCall(pred, getExp hd)) decEnv)
-						(*Inserisco nella valutazione del set della coda il valore v*)
-						in match maptail with
-							| SetVal(items, set_type) -> insert items set_type v
-							| _ -> failwith("Error: set  SetVal(_,_)")
+				| [] -> SetVal([], t)
+				| hd::tl -> 
+					eval (Insert(Map(pred, Set(listexp tl [], getExp (String(t)))), FunCall(pred, getExp hd))) r
 				)
-		| _,_ -> failwith("Error: either pred ⇏ FunVal(_,_,_) or set ⇏ SetVal(_,_)")
+			| _ -> failwith("Error: not a set")
+		with
+		| Failure(s) -> failwith(s)
 		)
 ;;
 
