@@ -1,7 +1,7 @@
 (*
 #################################################################
 #																																#
-#		PRG2B - Secondo progetto - Nicola Vetrini - matr 600199			#
+#		PRG2B - Secondo progetto intermedio - Nicola Vetrini				#
 #		Estensione linguaggio didattico con Set e stringhe, con			#
 #		implementazione delle relative operazioni ed estensione			# 
 #		del typechecking dinamico.																	#
@@ -20,7 +20,7 @@ print_endline "*** Dichiaro l'ambiente vuoto ***";;
 let env0 = emptyenv Unbound;;
 
 print_endline "*** Dichiaro la funzione inc1 che incrementa l'argomento (intero) di 1 ***";;
-let inc1 = Fun("y", Sum(Den "y", Eint 1));;
+let inc1 = Fun("param", Sum(Den "param", Eint 1));;
 print_endline "*** Dichiaro la funzione che testa se l'argomento (stringa) è \"Test\" ***";;
 let isTest = Fun("s", Eq(Den "s", Estring("Test")));;
 
@@ -320,21 +320,36 @@ try
 with
 | Failure(s) -> print_endline ("Caught "^s);
 
+
 (*Does not work*)
 print_endline "*** Definisco una funzione ricorsiva che calcola il fattoriale di un Int ***";
+(*Creo una variabile arg*)
+let denArg = Den "arg" in
 let fact = 
   Letrec(
       "fact",
       Fun("x", 
-        Prod(
-          Den "x", 
-          Ifthenelse(
-            Eq(Den "x", Eint(0)),
-            Eint(1),
+        Ifthenelse(
+          Eq(Den "x", Eint(0)),
+          Eint(1),
+          Prod(
+            Den "x",
             FunCall(Den "fact", Diff(Den "x", Eint(1)))
           )
         )
       ),
-      FunCall(Den "fact", Eint(2))
-  ) in
-print_exp fact env0;;
+      FunCall(Den "fact", denArg) (*L'argomento della funzione è denArg*)
+  ) 
+in
+print_endline "*** fact(0) ***";
+let r0 = bind env0 "arg" (Int(0)) in print_exp fact r0;
+print_endline "*** fact(10) ***";
+let r1 = bind r0 "arg" (Int(10)) in print_exp fact r1;
+print_endline "*** fact(19) ***";
+let r2 = bind env0 "arg" (Int(19)) in print_exp fact r2;
+let rec envlist r ls = match ls with
+| [] -> r
+| hd::tl -> envlist (bind r "arg" hd) tl
+in let r3 = envlist env0 ([Int(0);Int(1);Int(2);Int(3);Int(4);Int(5);Int(6)])
+(*Errore!!!! Retention?*)
+in print_exp (Map(fact, Set([Eint(0);Eint(1);Eint(2);Eint(3);Eint(4);Eint(5);Eint(6)], Estring("int")))) r3;;

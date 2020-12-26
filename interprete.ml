@@ -1,7 +1,7 @@
 (*
 #################################################################
 #																																#
-#		PRG2B - Secondo progetto - Nicola Vetrini - matr 600199			#
+#		PRG2B - Secondo progetto intermedio - Nicola Vetrini				#
 #		Estensione linguaggio didattico con Set e stringhe, con			#
 #		implementazione delle relative operazioni ed estensione			# 
 #		del typechecking dinamico.																	#
@@ -9,33 +9,36 @@
 #################################################################
 *)
 
+(*Apro il modulo contenente la definizione del linguaggio e l'ambiente*)
 open Linguaggio;;
 
 (*============= RTS =============*)
-(*type checking (dinamico)*)
+(*type checker (dinamico)*)
 let rec typecheck (s : string) (v : evT) : bool =
-	(*Funzione ausiliaria per fare typecheck su liste di valori*)
+	(*Funzione ausiliaria per fare typecheck su liste di denotabili*)
 	let rec list_check (t : string) (l : evT list) : bool = 
 		match l with
-		| [] -> true (*caso base: vero per la lista vuota*)
-		| hd::tl -> 
+		| [] -> true (*caso base: assumo che sia true se la lista è vuota*)
+		| hd::tl ->
 			if typecheck t hd
 			then list_check t tl (*Se è vero per la testa, allora controllo la coda*)
-			else false (*Altrimenti esiste un elemento di tipo diverso da t*)
+			else false (*Altrimenti esiste un elemento di tipo diverso da t ⇒ false*)
 	in match v with
-	| Int(_) -> s = "int"
-	| Bool(_) -> s = "bool"
-	| String(_) -> s = "string"
-	| SetVal(items, set_type) -> 
+	| Int(_) -> s = "int"					(*true se il tipo di v è Int, false altrimenti*)
+	| Bool(_) -> s = "bool"				(*true se il tipo di v è Bool, false altrimenti*)
+	| String(_) -> s = "string"		(*true se il tipo di v è String, false altrimenti*)
+	| SetVal(items, set_type) ->
 		(*
 			Controllo che il tipo del set sia int, bool o string 
-			e che tutti gli elementi siano di tale tipo:
-			se tali condizioni sono soddisfatte allora ho un SetVal valido,
-			altrimenti non lo è
+			e che tutti i suoi elementi siano di tale tipo:
+			se tali condizioni sono soddisfatte allora ho un SetVal valido ⇒ true
+			altrimenti non lo è ⇒ false
 		*)
 		(s = set_type)
 		&& ((set_type = "int") || (set_type = "bool") || (set_type = "string"))
 		&& (list_check s items)
+	| Unbound | UnboundInt | UnboundBool | UnboundString -> failwith("Unbound value")
+	(*Se non è nessuno dei precedenti pattern, allora solleva un'eccezione*)
 	| _ -> failwith("Error: type not supported by the typechecker")
 ;;
 
@@ -105,12 +108,13 @@ let concat (s1 : evT) (s2 : evT) : evT =
 	then match s1, s2 with 
 		| String(x), String(y) -> String(x^y)
 		| _,_ -> failwith("Error: either operand is not a String")
-	else failwith("Type error")
+	else failwith("Error: either operand is not a String")
 ;;
 
-(*	Costruisce set il set di tipo t contenente gli elementi nella lista ls,
- *	dopo aver controllato che tutti gli elementi di ls siano di tipo t e che
- *	t sia uno tra i tipi validi per elementi di Set (int, bool, string)
+(*
+	Costruisce il set di tipo t contenente gli elementi nella lista ls,
+	dopo aver controllato che tutti gli elementi di ls siano di tipo t e che
+	t sia uno tra i tipi validi per Set (int, bool o string)
  *)
 let setbuild (t : evT) (ls : evT list) : evT =
  	match t with
@@ -118,8 +122,8 @@ let setbuild (t : evT) (ls : evT list) : evT =
 		if typecheck s (SetVal(ls, s))
 		then SetVal(ls, s)
 		else failwith("Error: not a valid Set")
-	(*Se non ho una stringa di tipo errore*)
-	| _ -> failwith("Error: not a valid Set type")
+	(*Se t non è una String allora non può essere un tipo*)
+	| _ -> failwith("Error: not a valid Set")
 ;;
 
 (*Rimuove dalla lista ls l'elemento x e restituisce la lista modificata*)
@@ -127,6 +131,7 @@ let rec drop_x (ls : evT list) (x : evT) (acc : evT list) =
 	match ls with
 	| [] -> acc
 	| hd::tl ->
+		(*Se la testa è un Int, Bool o String la confronta con x*)
 		match hd, x with
 		| Int(a), Int(b) -> if a = b 
 			then drop_x tl x acc 
@@ -137,22 +142,22 @@ let rec drop_x (ls : evT list) (x : evT) (acc : evT list) =
 		| String(a), String(b) -> if a = b 
 			then drop_x tl x acc 
 			else drop_x tl x (hd::acc)
-		| _ -> failwith("Error: not a valid type")
+		| _,_ -> failwith("Error: type not supported by drop_x")
 ;;
 
-(*Di seguito implemento le operazioni su Set*)
+(*============= Operazioni su Set =============*)
 
 (*
-	contains ritorna true se elem ∊ items e ha lo stesso tipo del set, mentre
-	ritorna false se i tipi sono diversi, oppure se elem ∉ items (nel primo caso stampa
-	warning). Se quello ricevuto non è un SetVal allora solleva eccezione
+	contains ritorna true se elem ∊ items ed ha il tipo del set, mentre ritorna false 
+	se i tipi sono diversi, oppure se elem ∉ items (nel primo caso stampa un warning).
+	Se quello ricevuto non è un SetVal solleva un'eccezione
 *)
 let contains (set : evT) (elem : evT) : bool = 
 	match set with
 	| SetVal(items, set_type) -> 
 		let rec lookup ls x =
 			match ls with
-			| [] -> false (*Lista di elementi del set terminata senza trovare elem => false*)
+			| [] -> false (*Lista di elementi del set terminata senza trovare elem ⇒ false*)
 			| hd::tl ->
 				(*Controllare che l'elemento cercato abbia lo stesso tipo del set*)
 				if typecheck set_type elem
@@ -188,7 +193,7 @@ let insert (items : evT list) (set_type : string) (newel : evT) : evT =
 	e l'elemento da rimuovere (x): se x passa il controllo di tipo e x ∊ items
 	allora restituisce il SetVal in cui ho rimosso x, altrimenti ritorna 
 	quello ricevuto in input e stampa un warning su standard output. Se invece il tipo
-	di x è diverso da quello del set, allora solleva eccezione
+	di x è diverso da quello del set, allora solleva un'eccezione
 *)
 let remove (items : evT list) (set_type : string) (x : evT) : evT =
 	(*Controllo dinamico dei tipi, se fallisce lancio un'eccezione*)
@@ -196,6 +201,7 @@ let remove (items : evT list) (set_type : string) (x : evT) : evT =
 	then (*Se x ∊ items, lo rimuovo*)
 		if contains (SetVal(items, set_type)) x
 		then SetVal(drop_x items x [], set_type) (*La funzione drop_x rimove x da items*)
+		(*Se x ∉ items allora stampa warning e ritorna set senza modifiche*)
 		else (print_endline "Warning: element not in the set"; SetVal(items, set_type))
 	else failwith("Error: type mismatch")
 ;;
@@ -203,7 +209,7 @@ let remove (items : evT list) (set_type : string) (x : evT) : evT =
 (*
 	subset prende in input due set ed i rispettivi tipi (solo per comodità) e ritorna
 	true se a ⊆ b ed i tipi combaciano, false altrimenti (con warning se ta ≠ tb)
-	Se a non è un SetVal allora solleva un'eccezione
+	Se a o b non sono SetVal allora solleva un'eccezione (il controllo su b è in contains)
 *)
 let rec subset (a : evT) (ta : string) (b : evT) (tb : string) : bool =
 	(*controllo che i tipi dei due set combacino*)
@@ -220,7 +226,7 @@ let rec subset (a : evT) (ta : string) (b : evT) (tb : string) : bool =
 				else false
 			)
 		| _ -> failwith("Error: not a set")
-	(*Se i set sono di tipi diversi allora sicuramente è false*)
+	(*Se i set sono di tipi diversi allora sicuramente è false, ma stampo anche un warning*)
 	else (print_endline "warning: type mismatch"; false)
 ;;
 
@@ -228,17 +234,17 @@ let rec subset (a : evT) (ta : string) (b : evT) (tb : string) : bool =
 let lt (x : evT) (y : evT) : bool = 
 	match x, y with
 	| Int(a), Int(b) -> a < b
-	(*Per i booleani Bool(false) < Bool(true), come da default in Ocaml*)
+	(*Per i booleani Bool(false) < Bool(true), come tra booleani in Ocaml*)
 	| Bool(a), Bool(b) -> a < b
 	(*
 		Per le stringhe uso l'operatore < : string->string->bool che 
 		rispetta l'ordine lessicografico
 	*)
 	| String(s1), String(s2) -> s1 < s2
-	| _ -> failwith("total ordering not defined on this type")
+	| _ -> failwith("Error: total ordering not defined on this type")
 ;;
 
-(*Ritorna il min della lista di evT passata come parametro, Unbound per il tipo se è vuota*)
+(*min della lista di evT passata come parametro, Unbound per il tipo se è vuota*)
 let rec min (items : evT list) (m : evT) : evT = 
 	match items with
 	| [] -> m
@@ -249,7 +255,7 @@ let rec min (items : evT list) (m : evT) : evT =
 		else min tl m
 ;;
 
-(*Ritorna il max della lista di evT passata come parametro, Unbound per il tipo se è vuota*)
+(*max della lista di evT passata come parametro, Unbound per il tipo se è vuota*)
 let rec max (items : evT list) (m : evT) : evT = 
 	match items with
 	| [] -> m
@@ -266,7 +272,7 @@ let rec max (items : evT list) (m : evT) : evT =
 	sulla coda della lista finchè essa non è vuota e restituisce il SetVal ottenuto.
 	Il typechecking è implementato nelle funzioni contains ed insert, perciò
 	è garantita la correttezza dei tipi nel set risultante. 
-	Il controllo sui tipi dei set in input è fatto in eval
+	Il controllo sui tipi dei set in input è eseguito in eval
 *)
 let rec merge (l1 : evT list) (set :evT) : evT = 
 	let items, set_type = 
@@ -283,50 +289,47 @@ let rec merge (l1 : evT list) (set :evT) : evT =
 ;;
 
 (*	
-	Effettua l'intersezione dei due set a partire dalla lista dei loro elementi.
+	Effettua l'intersezione dei due set a partire dalle liste dei loro elementi.
 	Uso due funzioni ausiliarie per intersecare le liste e poi restituisco il set
 	che ha per elementi tale lista. Il controllo sui tipi dei set in input è fatto in eval
  *)
 let rec intersect (l1 : evT list) (l2 : evT list) (set_type : string) : evT =
-	(*funzione ausiliaria che restituisce true sse el ∊ ls, false altrimenti*)
-	(*let rec contained ls el = match ls with
-		| [] -> false
-		| hd::tl -> if hd = el then true else contained tl el
 	(*interseca l_1 e l_2 usando una lista ausiliaria acc inizialmente vuota*)
-	in*) let rec list_intersect l_1 l_2 acc = match l_1 with
-		| h1::t1 ->
+	let rec list_intersect l_1 l_2 acc = 
+		match l_1 with
+		| h1::t1 -> if contains (SetVal(l2, set_type)) h1
 			(*Se la testa di l_1 è in l2 allora la aggiungo all'intersezione*)
-			if contains (SetVal(l2, set_type)) h1 
-			then list_intersect t1 l2 ([h1]@acc)
+			then list_intersect t1 l2 (h1::acc)
+			(*Altrimenti interseco la coda di l_1 senza aggiungere elementi ad acc*)
 			else list_intersect t1 l2 acc
-		| [] -> acc (*Ho visitato l'intera lista l1, ritorno acc*)
+		| [] -> acc (*Ho visitato l'intera lista l1, ritorno acc che conterrà l'intersezione*)
+	(*Ritorno il SetVal dato dall''intersezione delle liste di elementi ed il tipo dato*)
 	in SetVal(list_intersect l1 l2 [], set_type)
 ;;
 
 (*
 	Effettua l'operazione di differenza tra insiemi: toglie tutti gli elementi
-	di to_rm da src e restituisce il SetVal risultante.
+	della lista to_rm da src e restituisce il SetVal risultante.
 	Il controllo sui tipi dei set in input è fatto in eval
 *)
 let rec setdiff (src : evT) (to_rm : evT list) : evT = 
+	(*Match per ottenere gli elementi del set ed il suo tipo*)
 	let items, set_type = 
 		match src with 
 			| SetVal(l, t) -> l, t
 			| _ -> failwith("Error: not a set")
+	(*Scorre la lista di elementi e li rimuove*)
 	in match to_rm with
 	| [] -> src
 	| hd::tl ->
-	(*
-		Se il set sorgente contiene l'elemento hd, allora chiamo la
-		funzione di rimozione e poi ricorro sulla coda
-	*)
 		if contains src hd
 		then setdiff (remove items set_type hd) tl
 		else setdiff src tl
 ;;
 
 (*============= Funzioni ausiliarie =============*)
-(*Converte un esprimibile nell'espressione corrispondente*)
+
+(*Converte un esprimibile nell'espressione corrispondente (per Int, Bool e String)*)
 let getExp (el : evT) : exp = 
 	match el with
 	| Int(x) -> Eint(x)
@@ -336,10 +339,10 @@ let getExp (el : evT) : exp =
 ;;
 
 (*Converte una lista di esprimibili nella lista di espressioni corrispondente*)
-let rec listexp (ls : evT list) (acc : exp list) : (exp list) = 
+let rec listExp (ls : evT list) (acc : exp list) : (exp list) = 
 	match ls with 
 	| [] -> acc
-	| h::t -> listexp t [getExp h]@acc
+	| h::t -> listExp t ((getExp h)::acc)
 ;;
 
 (*============= Interprete del linguaggio =============*)
@@ -364,7 +367,7 @@ let rec eval (e : exp) (r : evT env) : evT =
 	| Ifthenelse(guard, e1, e2) -> let g = eval guard r in 
 			if typecheck "bool" g
 			then if g = Bool(true)
-				then eval e1 r 
+				then eval e1 r
 				else eval e2 r
 			else failwith ("Error: nonboolean guard")
 	| Let(i, e1, e2) -> (*let i = e1 in e2*)
@@ -385,15 +388,15 @@ let rec eval (e : exp) (r : evT env) : evT =
 				(*Se invece ho una funzione ricorsiva*)
 				| RecFunVal(g, (arg, fBody, fDecEnv)) ->
 					(*r ▷ eArg => aVal*)
-					let aVal = (eval eArg r) in
+					let aVal = eval eArg r in
 						(*	rEnv = fDecEnv[g/fClosure] ovvero aggiungo l'associazione del nome della
 						 *	funzione ricorsiva all'ambiente al momento della dichiarazione
 						 *)
-						let rEnv = (bind fDecEnv g fClosure) in
+						let rEnv = bind fDecEnv g fClosure in
 							(*	aEnv = rEnv[arg/aVal] ovvero lego il param. formale alla valutazione
 							 *	del parametro attuale, di fatto realizza il passaggio del parametro
 						 	 *)
-							let aEnv = (bind rEnv arg aVal) in
+							let aEnv = bind rEnv arg aVal in
 								(*finalmente sono in grado di valutare il corpo di f*)
 								eval fBody aEnv
 				| _ -> failwith("non functional value")
@@ -414,18 +417,21 @@ let rec eval (e : exp) (r : evT env) : evT =
 		)
 	
 	(*============= Le modifiche apportate =============*)
-	(*Valutazione di stringhe*)
-	| Estring s -> String s
+	(*Valutazione di stringhe + typecheck*)
+	| Estring s -> if typecheck "string" (String(s)) 
+		then String(s) 
+		else failwith("Error: not a string")
 	(*Valutazione dell'operazione di concatenazione, typecheck in concat*)
 	| Concat(s1, s2) -> concat (eval s1 r) (eval s2 r)
 	(*Valutazione di Set a SetVal. Il typecheck viene eseguito in setbuild*)
 	| EmptySet(set_type) -> setbuild (eval set_type r) []
 	| Singleton(item, set_type) -> setbuild (eval set_type r) [eval item r]
 	| Set(ls, set_type) ->
-		(*	Funzione ausiliaria per inserire senza duplicati la lista di elementi ls
-		 *	a partire da un Set vuoto
-		 *	Il typechecking è effettuato internamente da insert, lancia eccezione se
-		 * 	trova un elemento il cui tipo sia diverso dal tipo del Set
+		(*
+			Funzione ausiliaria per inserire senza duplicati la lista di elementi ls
+			a partire da un Set vuoto
+		 	Il typechecking è effettuato internamente da insert, lancia un'eccezione se
+			trova un elemento il cui tipo sia diverso dal tipo del Set
 		 *)
 		let rec addlist (set : evT) (ls : exp list) : evT = match ls with
 			| [] -> set	(*list finita, ritorno il SetVal costruito*)
@@ -434,39 +440,48 @@ let rec eval (e : exp) (r : evT env) : evT =
 					then addlist set tl	(*Se el ∊ set non inserisco*)
 					else (match set with
 						(*Inserisce el nel set (typecheck in setbuild) e ricorre sulla coda*)
-						| SetVal(items, t) -> addlist (setbuild (String(t)) ([el]@items)) tl
+						| SetVal(items, t) -> addlist (setbuild (String(t)) (el::items)) tl
 						| _ -> failwith("Error: not a Set")
 					)
 		in addlist (setbuild (eval set_type r) []) ls
+	
 	(*============= Operazioni su Set =============*)
-	(*	Restituisce Bool(true) se è il set vuoto, Bool(false) se non lo è 
-	 *	e lancia eccezione se l'argomento non è un Set
+	(*	
+		IsEmpty restituisce Bool(true) se è il set vuoto, Bool(false) se non lo è 
+		e lancia eccezione se l'argomento non è un Set
 	 *)
 	| IsEmpty(set) -> (match eval set r with
 		| SetVal([], _) -> Bool(true)
 		| SetVal(ls, _) -> Bool(false)
 		| _ -> failwith("Error: not a Set")
 		)
-	(*Restituisce la cardinalità del Set sotto forma di Int*)
+	(*
+		Restituisce la cardinalità del Set sotto forma di Int
+		e lancia eccezione se l'argomento non è un Set
+	*)
 	| Size(set) -> (match eval set r with
-		| SetVal(items, set_type) -> 
+		| SetVal(items, set_type) ->
 			if (eval (IsEmpty(set)) r) = Bool(true) 
-			then Int(0)
-			else 
+			then Int(0) (*Caso base: set vuoto ⇒ cardinalità 0*)
+			else
+				(*ottengo la lista di espressioni dagli evT nella coda e la lego a etail*)
 				let etail = (match items with 
 				| [] -> []
-				| h::t -> listexp t []
+				| h::t -> listExp t []
 				) 
+				(*Valuto ricorsivamente l'espressione 1 + Size(Set(etail, type))*)
 				in eval (Sum(Eint(1), Size(Set(etail, Estring(set_type))))) r
 		| _ -> failwith("Error: not a Set")
 		)
-	(*	Contains viene valutata Bool(true) se set contiene elem, Bool(false) altrimenti
-	 *	Se non è un Set invece lancia eccezione
-	 *)
+	(*
+		Contains viene valutata Bool(true) se set contiene elem, Bool(false) altrimenti
+		Se non è un Set invece lancia eccezione
+	*)
 	| Contains(set, elem) -> Bool(contains (eval set r) (eval elem r))
-	(*	Insert viene valuata al SetVal i cui elementi sono l'unione di quelli del
-	 *	set ed elem, con eccezione se i tipi non combaciano
-	 *)
+	(*
+		Insert viene valuata al SetVal i cui elementi sono l'unione di quelli del
+		set ed elem, con eccezione se i tipi non combaciano
+	*)
 	| Insert(set, elem) -> (match eval set r with
 		| SetVal(items, set_type) -> insert items set_type (eval elem r)
 		| _ -> failwith("Error: not a set")
@@ -476,9 +491,10 @@ let rec eval (e : exp) (r : evT env) : evT =
 		| SetVal(items, set_type) -> remove items set_type (eval elem r)
 		| _ -> failwith("Error: not a set")
 		)
-	(*	Subset(a, b) viene valutata Bool(true) 
-	 *	sse (a ⊆ b) ∧ (type_a = type_b), Bool(false) altrimenti
-	 *)
+	(*
+		Subset(a, b) viene valutata Bool(true) 
+		sse (a ⊆ b) ∧ (type_a = type_b), Bool(false) altrimenti
+	*)
 	| Subset(a, b) -> (match eval a r, eval b r with 
 		| SetVal(_,type_a), SetVal(_,type_b) -> 
 			Bool(subset (eval a r) type_a (eval b r) type_b)
@@ -525,97 +541,112 @@ let rec eval (e : exp) (r : evT env) : evT =
 			else failwith("Error: type mismatch. Cannot intersect")
 		| _,_ -> failwith("Error: either one is not a set. Cannot intersect")
 		)
-	(*	Effettua la differenza insiemistica set1 - set2, ovvero
-	 *	il set {i : i ∊ set1 => i ∉ set2}
-	 *)
+	(*
+		Effettua la differenza insiemistica {set1} \ {set2}, ovvero
+		il set {i : i ∊ set1 ∧ i ∉ set2}
+	*)
 	| SetDiff(set1, set2) -> (match eval set1 r, eval set2 r with
 		| SetVal(it1, type_1), SetVal(it2, type_2) -> 
 			if type_1 = type_2
 			(*Se i tipi combaciano sottraggo set2 da set1*)
 			then setdiff (eval set1 r) it2
-			else failwith("Error: type mismatch. Cannot subtract")
+			else failwith("Error: type mismatch. Cannot subtract sets")
 		| _,_ -> failwith("Error: either one is not a set")
 		)
-	(*Restituisce Bool(true) sse tutti gli elementi del Set soddisfano il predicato*)
-	| Forall(pred, set) -> 
-		(*Valuto il set per fare typechecking*)
-		(
-		try 
-			match eval set r with
-			| SetVal(items, t) ->
-				(match items with
-				| [] -> Bool(true)
-				| hd::tl -> 
-					let res = eval (FunCall(pred, getExp hd)) r in
-						(match res with
-						| Bool(true) ->  eval (Forall(pred, Set(listexp tl [], getExp (String(t))))) r
-						| Bool(false) -> Bool(false)
-						| _ -> failwith("Error: pred ⇏ Bool(_)")
-						)
-				)
-			| _ -> failwith("Error: not a set")
-		with
-		| Failure(s) -> failwith(s)
+	(*
+		Restituisce Bool(true) sse tutti gli elementi del Set soddisfano il predicato.
+		Il predicato deve essere booleano, ovvero ritornare Bool(_), altrimenti avrò un errore
+		di valutazione e la conseguente eccezione a runtime
+	*)
+	| Forall(pred, set) ->
+		(match eval set r with (*Valuto il set per fare typechecking*)
+		| SetVal(items, t) ->
+			(match items with
+			| [] -> Bool(true) (*vacuamente vero se il set non ha elementi*)
+			| hd::tl -> 
+				(*applico la funzione pred ad hd e controllo il risultato*)
+				let res = eval (FunCall(pred, getExp hd)) r in
+					(match res with
+					(*Se hd soddisfa pred allora valuto se gli elementi della coda lo soddisfano*)
+					| Bool(true) ->  eval (Forall(pred, Set(listExp tl [], Estring(t)))) r
+					(*Se trovo un elemento che non soddisfa pred ⇒ Bool(false)*)
+					| Bool(false) -> Bool(false)
+					(*pred non è una funzione booleana, pertanto sollevo un'eccezione*)
+					| _ -> failwith("Error: pred ⇏ Bool(_)")
+					)
+			)
+		| _ -> failwith("Error: not a set")
 		)
-	(*Restituisce Bool(true) sse esiste almeno un elemento del Set che soddisfa il predicato*)
+	(*
+		Restituisce Bool(true) sse esiste almeno un elemento del Set che 
+		soddisfa il pred, altrimenti Bool(false)
+	*)
 	| Exists(pred, set) -> 
-		(
-		try 
-			match eval set r with
-			| SetVal(items, t) ->
-				(match items with
-				| [] -> Bool(false)
-				| hd::tl -> 
-					let res = eval (FunCall(pred, getExp hd)) r in
-						(match res with
-						| Bool(true) -> Bool(true)
-						| Bool(false) ->  eval (Exists(pred, Set(listexp tl [], getExp (String(t))))) r
-						| _ -> failwith("Error: pred ⇏ Bool(_)")
-						)
-				)
-			| _ -> failwith("Error: not a set")
-		with
-		| Failure(s) -> failwith(s)
+		(match eval set r with (*Valuto il set per fare typechecking*)
+		| SetVal(items, t) ->
+			(match items with
+			| [] -> Bool(false) (*(∄i. i ∊ items ∧ pred(i) ⇒ Bool(true)) allora Bool(false)*)
+			| hd::tl -> 
+			(*applico la funzione pred ad hd e controllo il risultato*)
+				let res = eval (FunCall(pred, getExp hd)) r in
+					(match res with
+					(*Se trovo un elemento che soddisfa pred ⇒ Bool(true)*)
+					| Bool(true) -> Bool(true)
+					(*Se hd non soddisfa pred allora valuto se gli elementi della coda lo soddisfano*)
+					| Bool(false) ->  eval (Exists(pred, Set(listExp tl [], Estring(t)))) r
+					(*pred non è una funzione booleana, pertanto sollevo un'eccezione*)
+					| _ -> failwith("Error: pred ⇏ Bool(_)")
+					)
+			)
+		| _ -> failwith("Error: not a set")
 		)
-	(*Restituisce l'insieme di elementi che soddisfano pred*)
+	(*Restituisce l'insieme di elementi del set che soddisfano pred*)
 	| Filter(pred, set) -> 
-		(*Valuto il set per fare typechecking*)
-		(
-		try 
-			match eval set r with
-			| SetVal(items, t) ->
-				(match items with
-				| [] -> SetVal([], t)
-				| hd::tl -> 
-					let res = eval (FunCall(pred, getExp hd)) r in
-						let filtered_tail = Filter(pred, Set(listexp tl [], getExp (String(t)))) in
-						(match res with
-						| Bool(true) -> 
-							eval (Insert(filtered_tail, getExp hd)) r
-						| Bool(false) -> 
-							eval filtered_tail r
-						| _ -> failwith("Error: pred ⇏ Bool(_)")
-						)
-				)
-			| _ -> failwith("Error: not a set")
-		with
-		| Failure(s) -> failwith(s)
+		(match eval set r with (*Valuto il set per fare typechecking*)
+		| SetVal(items, t) ->
+			(match items with
+			| [] -> SetVal([], t) (*Se il set è vuoto, allora il set che ritorno è sempre vuoto*)
+			| hd::tl -> 
+				(*Valuto la testa della lista con la chiamata di pred e argomento hd*)
+				let res = eval (FunCall(pred, getExp hd)) r in
+					(*Valuto la coda della lista con Filter*)
+					let filtered_tail = Filter(pred, Set(listExp tl [], Estring(t))) in
+					(match res with
+					(*
+						Se la testa è stata valutata Bool(true), allora la inserisco nel set che
+						risulta dal filtro applicato alla coda
+					*)
+					| Bool(true) -> eval (Insert(filtered_tail, getExp hd)) r
+					(*Altrimenti valuto solo la coda*)
+					| Bool(false) -> eval filtered_tail r
+					(*pred non booleana: sollevo eccezione*)
+					| _ -> failwith("Error: pred ⇏ Bool(_)")
+					)
+			)
+		| _ -> failwith("Error: not a set")
 		)
 	(*Restituisce il Set in cui ad ogni elemento è stata applicata la funzione pred*)
 	| Map(pred, set) ->
-		(*Valuto il set per fare typechecking*)
-		(
-		try 
-			match eval set r with
+		(match eval set r with (*Valuto il set per fare typechecking*)
 			| SetVal(items, t) ->
 				(match items with
-				| [] -> SetVal([], t)
-				| hd::tl -> 
-					eval (Insert(Map(pred, Set(listexp tl [], getExp (String(t)))), FunCall(pred, getExp hd))) r
+				| [] -> SetVal([], t) (*Se il set era vuoto, allora restituisco il set vuoto*)
+				| hd::tl ->
+				(*
+					Inserisco nel set prodotto dalla Map sulla coda la chiamata sulla 
+					testa della funzione pred
+				*)
+				eval
+				(Insert(
+					Map(
+						pred,
+						Set(listExp tl [], Estring(t))
+					),
+					FunCall(pred, getExp hd)
+				))
+				r
 				)
 			| _ -> failwith("Error: not a set")
-		with
-		| Failure(s) -> failwith(s)
 		)
 ;;
 

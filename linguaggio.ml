@@ -1,9 +1,9 @@
 (*
 #################################################################
 #																																#
-#		PRG2B - Secondo progetto - Nicola Vetrini - matr 600199			#
+#		PRG2B - Secondo progetto intermedio - Nicola Vetrini				#
 #		Estensione linguaggio didattico con Set e stringhe, con			#
-#		implementazione delle relative operazioni ed estensione			# 
+#		implementazione delle relative operazioni ed estensione			#
 #		del typechecking dinamico.																	#
 #																																#
 #################################################################
@@ -19,28 +19,26 @@ type exp =
     | Eint of int
     | Ebool of bool
     (*posso avere variabili*)
-    | Den of ide 
+    | Den of ide
     (*varie operazioni aritmetico/logiche*)
     | Prod of exp * exp
-    | Sum of exp * exp 
-    | Diff of exp * exp 
-    | Eq of exp * exp 
-    | Minus of exp 
-    | IsZero of exp 
-    | Or of exp * exp 
-    | And of exp * exp 
-    | Not of exp		
-    (*expressione condizionale: if <guardia>:Bool(_) then e1 else e2*)						
+    | Sum of exp * exp
+    | Diff of exp * exp
+    | Eq of exp * exp
+    | Minus of exp
+    | IsZero of exp
+    | Or of exp * exp
+    | And of exp * exp
+    | Not of exp
+    (*expressione condizionale: if <guard> then <e1> else <e2>*)
     | Ifthenelse of exp * exp * exp
+		(*let <ide> = <e1> in <e2>*)
     | Let of ide * exp * exp
-    (*dichiarazione di funzione non ricorsiva*) 
+    (*dichiarazione di funzione non ricorsiva*)
     | Fun of ide * exp
-    (*
-			Dichiarazione di funzione ricorsiva. 
-			Contiene in più anche il nome della funzione
-		*) 
+    (*Dichiarazione di funzione ricorsiva. Ha in più il nome della funzione*)
     | Letrec of ide * exp * exp
-    (*chiamata di funzione*)
+    (*chiamata di funzione (sia ricorsiva che non ricorsiva)*)
     | FunCall of exp * exp
 
     (*============= Le modifiche apportate =============*)
@@ -50,15 +48,17 @@ type exp =
 				● Set (con annotazione di tipo)
 				● varie operazioni su Set
 		*)
+
 		| Estring of string
-		(*Concatena il secondo argomento al primo, se sono entrambe stringhe*)
+		(*Concatena il secondo argomento al primo, se sono entrambe Estring(_)*)
 		| Concat of exp * exp
-		(*	Ho tre costruttori di Set: 
+
+		(*	Ho tre costruttori di Set:
 				● Set vuoto (con tipo)
 				● Set contenente un singolo elemento (singleton)
-				● Set contenente una lista di elementi (espressioni)
+				● Set contenente una lista di elementi
 					Eventuali duplicati nella lista di espressioni sono scartati al momento
-					della valutazione del costruttore
+					della valutazione del costruttore, quando avviene anche il typechecking
 		*)
 		| EmptySet of exp
 		| Singleton of exp * exp
@@ -90,18 +90,18 @@ let emptyenv (v : 't) = function x -> v;;
 (*la funzione ambiente (r) applicata all'identificatore i, ovvero env ▷ i => v*)
 let applyenv (r : 't env) (i : ide) = r i;;
 (*crea il legame tra l'identificatore i ed il valore v, ovvero env1 = env[v/i]*)
-let bind (r : 't env) (i : ide) (v : 't) = 
+let bind (r : 't env) (i : ide) (v : 't) =
   function x -> if x = i then v else applyenv r x;;
 
 (*============= Tipi esprimibili =============*)
-type evT = 
+type evT =
 	| Int of int
 	| Bool of bool
-	(*una funzione è una chiusura, la tripla definita sotto *)  
-	| FunVal of evFun 
-	(*	
-		Una funzione ricorsiva ha bisogno anche del suo nome nella chiusura, altrimenti
-		non è possibile valutarla correttamente
+	(*una funzione è una chiusura, la tripla definita sotto *)
+	| FunVal of evFun
+	(*
+		Una funzione ricorsiva ha bisogno anche del suo nome nella chiusura,
+		altrimenti non è possibile valutarla correttamente
 	*)
 	| RecFunVal of ide * evFun
 
@@ -109,10 +109,10 @@ type evT =
 	(*Nuovo denotabile String, risultante dalla valutazione di Estring*)
 	| String of string
 	(*
-		Nuovo denotabile, SetVal, composto da una lista 
+		Nuovo denotabile, SetVal, composto da una lista
 		di denotabili (elementi) e una stringa (il tipo).
-		Se il SetVal è il risultato della valutazione di un espressione, allora
-		è garantito che sia valido
+		Il tipo di tutti gli elementi della lista deve corrispondere al tipo del set
+		Ciò è verificato a runtime alla valutazione del set
 	*)
 	| SetVal of (evT list) * string
 	(*
