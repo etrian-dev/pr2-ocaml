@@ -52,19 +52,25 @@ let prod x y = if (typecheck "int" x) && (typecheck "int" y)
 
 let sum x y = if (typecheck "int" x) && (typecheck "int" y)
 	then match (x,y) with
-		| (Int(n),Int(u)) -> Int(n+u)
+		| Int(n),Int(u) -> Int(n+u)
 		| _,_ -> failwith("Error: cannot apply to the operands")
 	else failwith("Type error");;
 
 let diff x y = if (typecheck "int" x) && (typecheck "int" y)
 	then match (x,y) with 
-		| (Int(n),Int(u)) -> Int(n-u)
+		| Int(n),Int(u) -> Int(n-u)
 		| _,_ -> failwith("Error: cannot apply to the operands")
 	else failwith("Type error");;
 
-let eq x y = if (typecheck "int" x) && (typecheck "int" y)
+(*Ho modificato eq per accettare anche uguaglianza tra booleani e stringhe*)
+let eq x y = 
+	if 	(typecheck "int" x) && (typecheck "int" y)
+			|| (typecheck "bool" x) && (typecheck "bool" y)
+			|| (typecheck "string" x) && (typecheck "string" y)
 	then match (x,y) with 
-		| (Int(n),Int(u)) -> Bool(n=u)
+		| Int(n), Int(u) -> Bool(n=u)
+		| Bool(n), Bool(u) -> Bool(n=u)
+		| String(n), String(u) -> Bool(n=u)
 		| _,_ -> failwith("Error: cannot apply to the operands")
 	else failwith("Type error");;
 
@@ -625,26 +631,54 @@ let rec eval (e : exp) (r : evT env) : evT =
 			)
 		| _ -> failwith("Error: not a set")
 		)
-	(*Restituisce il Set in cui ad ogni elemento è stata applicata la funzione pred*)
-	| Map(pred, set) ->
-		(match eval set r with (*Valuto il set per fare typechecking*)
-			| SetVal(items, t) ->
+	(*Restituisce il Set in cui ad ogni elemento è stata applicata la funzione funct*)
+	| Map(funct, set) ->
+		(match eval funct r, eval set r with (*Valuto la funzione e il set*)
+			| FunVal(arg, body, decEnv), SetVal(items, t) -> (*Se la funzione non è ricorsiva...*)
 				(match items with
 				| [] -> SetVal([], t) (*Se il set era vuoto, allora restituisco il set vuoto*)
 				| hd::tl ->
 				(*
 					Inserisco nel set prodotto dalla Map sulla coda la chiamata sulla 
-					testa della funzione pred
+					testa della funzione funct
 				*)
-				eval
-				(Insert(
-					Map(
-						pred,
-						Set(listExp tl [], Estring(t))
-					),
-					FunCall(pred, getExp hd)
-				))
-				r
+					let env_plus_hd = bind decEnv arg hd in
+						let res_hd = eval body env_plus_hd in
+							let new_t = (match res_hd with
+								| Int(x) -> "int"
+								| Bool(x) -> "bool"
+								| String(x) -> "string"
+								| _ -> failwith("Error: not a valid set type")
+							) in
+
+						let tailset = eval (Map(funct, Set(listExp tl [], Estring(t)))) r in
+							(match tailset with
+							| SetVal(items, set_type) -> SetVal(res_hd::items, new_t)
+							| _ -> failwith("Error: not a valid set")
+							)
+				)
+			| RecFunVal(fname, (arg, body, decEnv)), SetVal(items, t) ->
+				(match items with
+				| [] -> SetVal([], t) (*Se il set era vuoto, allora restituisco il set vuoto*)
+				| hd::tl ->
+				(*
+					Inserisco nel set prodotto dalla Map sulla coda la chiamata sulla 
+					testa della funzione funct
+				*)
+					let env_plus_hd = bind decEnv arg hd in
+						let res_hd = eval body env_plus_hd in
+							let new_t = (match res_hd with
+								| Int(x) -> "int"
+								| Bool(x) -> "bool"
+								| String(x) -> "string"
+								| _ -> failwith("Error: not a valid set type")
+							) in
+
+						let tailset = eval (Map(funct, Set(listExp tl [], Estring(t)))) r in
+							(match tailset with
+							| SetVal(items, set_type) -> SetVal(res_hd::items, new_t)
+							| _ -> failwith("Error: not a valid set")
+							)
 				)
 			| _ -> failwith("Error: not a set")
 		)
