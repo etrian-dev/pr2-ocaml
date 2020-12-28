@@ -417,7 +417,7 @@ let rec eval (e : exp) (r : evT env) : evT =
 					 *	tra f e il suo valore (di tipo RecFunVal)
 					 *)
 			    let r1 = (bind r f (RecFunVal(f, (i, fBody, r)))) in
-							(*Allora nella valutzione del corpo posso chiamare f stessa*)
+							(*Allora nella valutazione del corpo posso chiamare f stessa*)
 			        eval letBody r1
 		    | _ -> failwith("non functional def")
 		)
@@ -657,30 +657,7 @@ let rec eval (e : exp) (r : evT env) : evT =
 							| _ -> failwith("Error: not a valid set")
 							)
 				)
-			| RecFunVal(fname, (arg, body, decEnv)), SetVal(items, t) ->
-				(match items with
-				| [] -> SetVal([], t) (*Se il set era vuoto, allora restituisco il set vuoto*)
-				| hd::tl ->
-				(*
-					Inserisco nel set prodotto dalla Map sulla coda la chiamata sulla 
-					testa della funzione funct
-				*)
-					let env_plus_hd = bind decEnv arg hd in
-						let res_hd = eval body env_plus_hd in
-							let new_t = (match res_hd with
-								| Int(x) -> "int"
-								| Bool(x) -> "bool"
-								| String(x) -> "string"
-								| _ -> failwith("Error: not a valid set type")
-							) in
-
-						let tailset = eval (Map(funct, Set(listExp tl [], Estring(t)))) r in
-							(match tailset with
-							| SetVal(items, set_type) -> SetVal(res_hd::items, new_t)
-							| _ -> failwith("Error: not a valid set")
-							)
-				)
-			| _ -> failwith("Error: not a set")
+			| _ -> failwith("Error: recursive functions not supported")
 		)
 ;;
 

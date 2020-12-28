@@ -436,5 +436,3 @@ print_endline ("*** Map(findOcaml, "^(string_of_evT (eval lstr env0))^") [Bool(t
 print_exp (Map(findOcaml, lstr)) env0;
 print_endline ("*** Map(gt_le_3, "^(string_of_evT (eval lint1 env0))^") [String \"gt\" per tutti gli elementi > Int 3, String \"le\" altrimenti] ***");
 print_exp (Map(gt_le_3, lint1)) env0;
-print_endline ("*** Map(fact, "^(string_of_evT (eval sint env0))^") ***");
-print_exp (Map(fact, sint)) env0;
