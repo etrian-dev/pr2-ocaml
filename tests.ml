@@ -1,10 +1,10 @@
 (*
 #################################################################
 #																																#
-#		PRG2B - Secondo progetto intermedio - Nicola Vetrini				#
-#		Estensione linguaggio didattico con Set e stringhe, con			#
-#		implementazione delle relative operazioni ed estensione			# 
-#		del typechecking dinamico.																	#
+#   PRG2B - Secondo progetto intermedio - Nicola Vetrini        #
+#   Estensione linguaggio didattico con Set e stringhe, con     #
+#   implementazione delle relative operazioni ed estensione     # 
+#   del typechecking dinamico.                                  #
 #																																#
 #################################################################
 *)
