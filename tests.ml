@@ -1,11 +1,11 @@
 (*
 #################################################################
-#																																#
+#                                                               #
 #   PRG2B - Secondo progetto intermedio - Nicola Vetrini        #
 #   Estensione linguaggio didattico con Set e stringhe, con     #
 #   implementazione delle relative operazioni ed estensione     # 
 #   del typechecking dinamico.                                  #
-#																																#
+#                                                               #
 #################################################################
 *)
 
@@ -111,8 +111,11 @@ print_endline ("*** Int 100 ∊ "^(string_of_evT (eval sint env0))^"? ***");
 print_exp (Contains(sint, Eint(100))) env0;
 print_endline ("*** Bool(true) ∊ "^(string_of_evT (eval ebool env0))^"? ***");
 print_exp (Contains(ebool, Ebool(true))) env0;
-print_endline ("*** \"test\" ∊ "^(string_of_evT (eval lint1 env0))^"? ***");
-print_exp (Contains(lint1, Estring("test"))) env0;
+try 
+  print_endline ("*** \"test\" ∊ "^(string_of_evT (eval lint1 env0))^"? ***");
+  print_exp (Contains(lint1, Estring("test"))) env0;
+with
+| Failure(s) -> print_endline ("Caught"^s);
 
 (*============== Test per Insert ==============*)
 print_endline "(*============== Test per Insert ==============*)";
@@ -157,8 +160,11 @@ print_endline ("*** "^(string_of_evT (eval ebool env0))^" ⊆ "^(string_of_evT (
 print_exp (Subset(ebool, ebool)) env0;
 print_endline ("*** "^(string_of_evT (eval lint1 env0))^" ⊆ "^(string_of_evT (eval eint env0)));
 print_exp (Subset(lint1, eint)) env0;
-print_endline ("*** "^(string_of_evT (eval sint env0))^" ⊆ "^(string_of_evT (eval sbool env0))^"? ***");
-print_exp (Subset(sint, sbool)) env0;
+try
+  print_endline ("*** "^(string_of_evT (eval sint env0))^" ⊆ "^(string_of_evT (eval sbool env0))^"? ***");
+  print_exp (Subset(sint, sbool)) env0;
+with
+| Failure(s) -> print_endline ("Caught "^s);
 
 (*============== Test per SetMin/SetMax ==============*)
 print_endline "(*============== Test per SetMin/SetMax ==============*)";
@@ -198,7 +204,11 @@ print_endline ("*** Unione di "^(string_of_evT (eval ebool env0))^" U "^(string_
 print_exp (Merge(ebool, ebool)) env0;
 print_endline ("*** Unione di "^(string_of_evT (eval eint env0))^" U "^(string_of_evT (eval lint env0))^" ***");
 print_exp (Merge(eint, lint)) env0;
-
+let lstr1, lstr2 = 
+  Set([Estring("a");Estring("b");Estring("c")], Estring("string")),
+  Set([Estring("A");Estring("B");Estring("C")], Estring("string")) in
+print_endline ("*** Unione di "^(string_of_evT (eval lstr1 env0))^" U "^(string_of_evT (eval lstr2 env0))^" ***");
+print_exp (Merge(lstr1, lstr2)) env0;
 
 try
   print_endline ("*** Unione di "^(string_of_evT (eval sstr env0))^" U "^(string_of_evT (eval eint env0))^" ***");
@@ -269,14 +279,14 @@ print_endline "(*============== Definizione di funzioni ==============*)";
 print_endline "*** Definisco una Fun che ritorna Bool(true) se il suo argomento è Int 0, Bool(false) altrimenti ***";
 print_endline "zero: Int->Bool";
 let zero = Fun("x", Eq(Den "x", Eint(0))) in
-print_endline "*** Definisco una Fun che ritorna Bool(true) sse l'argomento x != Int 0 ***";
+print_endline "*** Definisco una Fun che ritorna Bool(true) sse l'argomento Int x != Int 0 ***";
 print_endline "notZero: Int->Bool";
 let notZero = Fun("x", Not(Eq(Den "x", Eint(0)))) in
 print_endline "*** Definisco una Fun che ritorna Bool(true) sse l'argomento x = String(\"Ocaml\"), Bool(false) altrimenti ***";
 print_endline "findOcaml: String->Bool";
 let findOcaml = Fun("x", Eq(Den "x", Estring("Ocaml"))) in
 print_endline "*** Definisco una Fun che ritorna String(\"gt\") se Int x > Int 3, altrimenti String(\"le\") ***";
-print_endline "gt_le_6: Int->String";
+print_endline "gt_le_3: Int->String";
 let gt_le_3 = 
   Fun("x", 
     Ifthenelse(
@@ -307,8 +317,6 @@ let is_5_25 =
   ) in
 print_endline "*** Definisco una funzione ricorsiva che calcola il fattoriale di un Int x (>= 0)***";
 print_endline "fact: Int->Int";
-(*Creo una variabile arg*)
-let denArg = Den "arg" in
 let fact = 
   Letrec(
       "fact",
@@ -322,13 +330,20 @@ let fact =
           )
         )
       ),
-      FunCall(Den "fact", denArg) (*L'argomento della funzione è denArg*)
+      (*Il param. formale è arg, deve essere legato a qualche valore*)
+      FunCall(Den "fact", Den "arg")
   ) 
 in
+(*Test*)
+print_endline "*** fact(0) ***";
+let r0 = bind env0 "arg" (Int(0)) in print_exp fact r0;
+print_endline "*** fact(10) ***";
+let r1 = bind r0 "arg" (Int(10)) in print_exp fact r1;
+print_endline "*** fact(19) ***";
+let r2 = bind env0 "arg" (Int(19)) in print_exp fact r2;
+
 print_endline "*** Definisco una funzione ricorsiva, con argomento Int x (>= 0), che calcola Int(2**x) [** è l'elevamento a potenza] ***";
 print_endline "exp2: Int->Int";
-(*Creo una variabile arg1*)
-let denArg1 = Den "arg1" in
 let exp2 = 
   Letrec(
     "exp2",
@@ -342,17 +357,12 @@ let exp2 =
         )
       )
     ),
-    FunCall(Den "exp2", denArg1) (*L'argomento della funzione è denArg1*)
+    (*Il param. formale è arg1, deve essere legato a qualche valore*)
+    FunCall(Den "exp2", Den "arg1")
   ) 
 in
 
-(*Test funzioni ricorsive*)
-print_endline "*** fact(0) ***";
-let r0 = bind env0 "arg" (Int(0)) in print_exp fact r0;
-print_endline "*** fact(10) ***";
-let r1 = bind r0 "arg" (Int(10)) in print_exp fact r1;
-print_endline "*** fact(19) ***";
-let r2 = bind env0 "arg" (Int(19)) in print_exp fact r2;
+(*Test*)
 print_endline "*** exp2(10) = Int(2)**Int(10) ***";
 let r3 = bind env0 "arg1" (Int(10)) in print_exp exp2 r3;
 print_endline "*** exp2(10) = Int(2)**Int(0) ***";
@@ -368,10 +378,10 @@ print_endline ("*** Forall(zero, "^(string_of_evT (eval eint env0))^") [se il se
 print_exp (Forall(zero, eint)) env0;
 print_endline ("*** Forall(zero, "^(string_of_evT (eval sint env0))^") ***");
 print_exp (Forall(zero, sint)) env0;
-print_endline ("*** Forall(zero, "^(string_of_evT (eval (Singleton(Eint(55), Estring("int"))) env0))^") ***");
-print_exp (Forall(zero, (Singleton(Eint(55), Estring("int"))))) env0;
 print_endline ("*** Forall(zero, "^(string_of_evT (eval lint env0))^") ***");
 print_exp (Forall(zero, lint)) env0;
+print_endline ("*** Forall(is_5_25, "^(string_of_evT (eval lint env0))^") ***");
+print_exp (Forall(is_5_25, lint)) env0;
 
 try
   print_endline ("*** Forall(zero, Singleton(Eint(10), Estring(\"string\"))) ⇒ errore di valutazione del Set ***");
@@ -380,7 +390,7 @@ with
 | Failure(s) -> print_endline ("Caught "^s);
 
 try
-  print_endline ("*** Forall(zero, "^(string_of_evT (eval lbool env0))^") ⇒ errore di tipo ***");
+  print_endline ("*** Forall(zero, "^(string_of_evT (eval lbool env0))^") ⇒ errore di tipo (zero: Int->Bool) ***");
   print_exp (Forall(zero, lbool)) env0;
 with
 | Failure(s) -> print_endline ("Caught "^s);
@@ -394,10 +404,18 @@ print_endline ("*** Exists(is_5_25, "^(string_of_evT (eval lint_union_5 env0))^"
 print_exp (Exists(is_5_25, lint_union_5)) env0;
 print_endline ("*** Exists(is_5_25, "^(string_of_evT (eval eint env0))^") [falso se vuoto, in quanto (∄i. i ∊ Set ∧ ((i = Int 5) v (i = Int 25)))] ***");
 print_exp (Exists(is_5_25, eint)) env0;
+print_endline ("*** Exists(notZero, "^(string_of_evT (eval lint1 env0))^") ***");
+print_exp (Exists(notZero, lint1)) env0;
 
 try
-  print_endline ("*** Exists(zero, "^(string_of_evT (eval lbool env0))^") *** ⇒ errore di tipo ***");
-  print_exp (Exists(zero, lbool)) env0;
+  print_endline ("*** Exists(notZero, "^(string_of_evT (eval lbool env0))^") ⇒ errore di tipo ***");
+  print_exp (Exists(notZero, lbool)) env0;
+with
+| Failure(s) -> print_endline ("Caught "^s);
+
+try
+  print_endline ("*** Exists(addMod, "^(string_of_evT (eval sstr env0))^") ⇒ errore: predicato non booleano ***");
+  print_exp (Exists(addMod, sstr)) env0;
 with
 | Failure(s) -> print_endline ("Caught "^s);
 
@@ -413,7 +431,7 @@ print_exp (Filter(is_5_25, lint_union_5)) env0;
 print_endline ("*** Filter(findOcaml, "^(string_of_evT (eval lstr env0))^") ***");
 print_exp (Filter(findOcaml, lstr)) env0;
 try
-  print_endline ("*** Filter(findOcaml, "^(string_of_evT (eval sbool env0))^") ⇒ errore di tipo ***");
+  print_endline ("*** Filter(findOcaml, "^(string_of_evT (eval sbool env0))^") ⇒ errore di tipo (findOcaml: String->Bool) ***");
   print_exp (Filter(findOcaml, sbool)) env0;
 with
 | Failure(s) -> print_endline ("Caught "^s);
@@ -423,16 +441,16 @@ print_endline ("*** Map(inc1, "^(string_of_evT (eval lint env0))^") [incrementa 
 print_exp (Map(inc1, lint)) env0;
 print_endline ("*** Map(notZero, "^(string_of_evT (eval lint1 env0))^") ***");
 print_exp (Map(notZero, lint1)) env0;
-print_endline ("*** Map(mult5, "^(string_of_evT (eval mult5 env0))^") ***");
+print_endline ("*** Map(is_5_25, "^(string_of_evT (eval mult5 env0))^") ***");
 print_exp (Map(is_5_25, mult5)) env0;
 let threeStr = Set([Estring("three");Estring("two");Estring("one")], Estring("string")) in
 print_endline ("*** Map(addMod, "^(string_of_evT (eval threeStr env0))^") [concatena \"Mod\" ad ogni stringa del set] ***");
 print_exp (Map(addMod, threeStr)) env0;
 print_endline ("*** Map(addMod, "^(string_of_evT (eval estr env0))^") [concatena \"Mod\" ad ogni stringa] ***");
 print_exp (Map(addMod, estr)) env0;
-print_endline ("*** Map(findOcaml, "^(string_of_evT (eval threeStr env0))^") [Bool(true) se i ∊ elements ∧ i = \"Ocaml\", Bool(false) altrimenti] ***");
+print_endline ("*** Map(findOcaml, "^(string_of_evT (eval threeStr env0))^") ***");
 print_exp (Map(findOcaml, threeStr)) env0;
-print_endline ("*** Map(findOcaml, "^(string_of_evT (eval lstr env0))^") [Bool(true) se i ∊ elements ∧ i = \"Ocaml\", Bool(false) altrimenti] ***");
+print_endline ("*** Map(findOcaml, "^(string_of_evT (eval lstr env0))^") ***");
 print_exp (Map(findOcaml, lstr)) env0;
 print_endline ("*** Map(gt_le_3, "^(string_of_evT (eval lint1 env0))^") [String \"gt\" per tutti gli elementi > Int 3, String \"le\" altrimenti] ***");
 print_exp (Map(gt_le_3, lint1)) env0;

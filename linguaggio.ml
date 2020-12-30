@@ -1,11 +1,11 @@
 (*
 #################################################################
-#																																#
+#                                                               #
 #   PRG2B - Secondo progetto intermedio - Nicola Vetrini        #
 #   Estensione linguaggio didattico con Set e stringhe, con     #
 #   implementazione delle relative operazioni ed estensione     # 
 #   del typechecking dinamico.                                  #
-#																																#
+#                                                               #
 #################################################################
 *)
 
@@ -18,9 +18,9 @@ type exp =
     (*Posso avere costanti intere e booleane*)
     | Eint of int
     | Ebool of bool
-    (*posso avere variabili*)
+    (*Posso avere identificatori*)
     | Den of ide
-    (*varie operazioni aritmetico/logiche*)
+    (*Varie operazioni aritmetico/logiche*)
     | Prod of exp * exp
     | Sum of exp * exp
     | Diff of exp * exp
@@ -30,56 +30,61 @@ type exp =
     | Or of exp * exp
     | And of exp * exp
     | Not of exp
-    (*expressione condizionale: if <guard> then <e1> else <e2>*)
+    (*Espressione condizionale: if <guard> then <e1> else <e2>*)
     | Ifthenelse of exp * exp * exp
-		(*let <ide> = <e1> in <e2>*)
+    (*Let <ide> = <e1> in <e2>*)
     | Let of ide * exp * exp
-    (*dichiarazione di funzione non ricorsiva*)
+    (*Dichiarazione di funzione non ricorsiva (un solo parametro)*)
     | Fun of ide * exp
-    (*Dichiarazione di funzione ricorsiva. Ha in più il nome della funzione*)
+    (*
+    	Dichiarazione di funzione ricorsiva (un solo parametro).
+    	Rispetto a Fun devo specificare anche il nome della funzione
+    *)
     | Letrec of ide * exp * exp
-    (*chiamata di funzione (sia ricorsiva che non ricorsiva)*)
+    (*Chiamata di funzione (sia ricorsiva che non ricorsiva)*)
     | FunCall of exp * exp
 
     (*============= Le modifiche apportate =============*)
-    (*	Il linguaggio è esteso con i seguenti tipi di espressioni:
-				● Stringhe (Estring)
-				● Concatenzione di stringhe (Concat)
-				● Set (con annotazione di tipo)
-				● varie operazioni su Set
-		*)
-
-		| Estring of string
-		(*Concatena il secondo argomento al primo, se sono entrambe Estring(_)*)
-		| Concat of exp * exp
-
-		(*	Ho tre costruttori di Set:
-				● Set vuoto (con tipo)
-				● Set contenente un singolo elemento (singleton)
-				● Set contenente una lista di elementi
-					Eventuali duplicati nella lista di espressioni sono scartati al momento
-					della valutazione del costruttore, quando avviene anche il typechecking
-		*)
-		| EmptySet of exp
-		| Singleton of exp * exp
-		| Set of (exp list) * exp
-		(*============= Operazioni su Set =============*)
-		| IsEmpty of exp
-		| Size of exp	(*Cardinalità del Set passato come argomento*)
-		| Contains of exp * exp
-		| Insert of exp * exp
-		| Remove of exp * exp
-		| Subset of exp * exp
-		| SetMin of exp
-		| SetMax of exp
-		| Merge of exp * exp
-		| Intersect of exp * exp
-		| SetDiff of exp * exp
-		(*============= Operatori funzionali su Set =============*)
-		| Forall of exp * exp
-		| Exists of exp * exp
-		| Filter of exp * exp
-		| Map of exp * exp
+	(*	
+    	Il linguaggio è esteso con i seguenti tipi di espressioni:
+    	● Stringhe (Estring)
+		● Concatenzione di stringhe (Concat)
+		● Set (con annotazione di tipo)
+		● varie operazioni su Set
+	*)
+	
+	| Estring of string
+	| Concat of exp * exp
+	(*
+		Ho tre costruttori di Set:
+		● Set vuoto (con tipo)
+		● Set contenente un singolo elemento (singleton)
+		● Set contenente una lista di elementi
+		Eventuali duplicati nella lista di espressioni sono scartati al momento
+		della valutazione del costruttore, quando avviene anche il typechecking
+		sul tipo del Set ed i suoi elementi
+	*)
+	| EmptySet of exp
+	| Singleton of exp * exp
+	| Set of (exp list) * exp
+	(*============= Operazioni su Set =============*)
+	| IsEmpty of exp
+	(*Cardinalità del Set passato come argomento*)
+	| Size of exp
+	| Contains of exp * exp
+	| Insert of exp * exp
+	| Remove of exp * exp
+	| Subset of exp * exp
+	| SetMin of exp
+	| SetMax of exp
+	| Merge of exp * exp
+	| Intersect of exp * exp
+	| SetDiff of exp * exp
+	(*============= Operatori funzionali su Set =============*)
+	| Forall of exp * exp
+	| Exists of exp * exp
+	| Filter of exp * exp
+	| Map of exp * exp
 ;;
 
 (*============= Ambiente =============*)
@@ -97,7 +102,7 @@ let bind (r : 't env) (i : ide) (v : 't) =
 type evT =
 	| Int of int
 	| Bool of bool
-	(*una funzione è una chiusura, la tripla definita sotto *)
+	(*La valutazione di una funzione (non ricorsiva) è una chiusura*)
 	| FunVal of evFun
 	(*
 		Una funzione ricorsiva ha bisogno anche del suo nome nella chiusura,
@@ -109,20 +114,20 @@ type evT =
 	(*Nuovo denotabile String, risultante dalla valutazione di Estring*)
 	| String of string
 	(*
-		Nuovo denotabile, SetVal, composto da una lista
-		di denotabili (elementi) e una stringa (il tipo).
+		Nuovo denotabile, SetVal, composto da una coppia:
+		una di denotabili (elementi) e una stringa (il tipo).
 		Il tipo di tutti gli elementi della lista deve corrispondere al tipo del set
-		Ciò è verificato a runtime alla valutazione del set
+		Ciò è verificato a runtime tramite il typechecker.
 	*)
 	| SetVal of (evT list) * string
 	(*
-		Costruttori Unbound e gli Unbound specifici per i tipi usabili nei Set.
-		Unbound con tipo usati per la valutazione di SetMin e SetMax
+		Costruttori Unbound e Unbound specifici per i tipi usabili nei Set.
+		Unbound con tipo usati per la valutazione di SetMin e SetMax.
 	*)
 	| Unbound
 	| UnboundInt
 	| UnboundBool
 	| UnboundString
-	(*closure: <ide del param. formale, corpo della funzione, ambiente alla dichiarazione>*)
+	(*closure: <parametro formale, corpo della funzione, ambiente alla dichiarazione>*)
 	and evFun = ide * exp * evT env
 ;;
