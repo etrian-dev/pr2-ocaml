@@ -115,11 +115,8 @@ print_exp (Contains(ebool, Ebool(true))) env0;
 print_endline ("*** Int 10 ∊ "^(string_of_evT (eval lint1 env0))^"? ***");
 print_exp (Contains(lint1, Eint(10))) env0;
 
-try 
-  print_endline ("*** \"test\" ∊ "^(string_of_evT (eval lint1 env0))^"? ***");
-  print_exp (Contains(lint1, Estring("test"))) env0;
-with
-| Failure(s) -> print_endline ("Caught"^s);
+print_endline ("*** \"test\" ∊ "^(string_of_evT (eval lint1 env0))^"? ***");
+print_exp (Contains(lint1, Estring("test"))) env0;
 
 (*============== Test per Insert ==============*)
 print_endline "(*============== Test per Insert ==============*)";
@@ -131,11 +128,9 @@ print_endline ("*** Inserisco la stringa \"Ocaml\" nel set "^((string_of_evT (ev
 print_exp (Insert(sstr, oc)) env0;
 
 
-try
-  print_endline ("*** Provo ad inserire la stringa \"42\" in "^((string_of_evT (eval lint env0)))^" [eccezione: errore di tipo] ***");
-  print_exp (Insert(lint, Estring("42"))) env0 
-with 
-| Failure(s) -> print_endline ("Caught "^s);
+
+print_endline ("*** Provo ad inserire la stringa \"42\" in "^((string_of_evT (eval lint env0)))^" [eccezione: errore di tipo] ***");
+print_exp (Insert(lint, Estring("42"))) env0;
 
 (*============== Test per Remove ==============*)
 print_endline "(*============== Test per Remove ==============*)";
@@ -146,11 +141,9 @@ print_exp (Remove(lint1, Eint(5))) env0;
 print_endline ("*** Rimuovo \"str\" da "^(string_of_evT (eval estr env0))^" ***");
 print_exp (Remove(estr, Estring("str"))) env0;
 
-try 
-  print_endline ("*** Rimuovo \"str\" da "^(string_of_evT (eval lbool env0))^" [eccezione: errore di tipo] ***");
-  print_exp (Remove(lbool, Estring("str"))) env0
-with
-| Failure(s) -> print_endline ("Caught "^s);
+print_endline ("*** Rimuovo \"str\" da "^(string_of_evT (eval lbool env0))^" [eccezione: errore di tipo] ***");
+print_exp (Remove(lbool, Estring("str"))) env0;
+
 
 (*============== Test per Subset ==============*)
 print_endline "(*============== Test per Subset ==============*)";
@@ -164,11 +157,8 @@ print_endline ("*** "^(string_of_evT (eval ebool env0))^" ⊆ "^(string_of_evT (
 print_exp (Subset(ebool, ebool)) env0;
 print_endline ("*** "^(string_of_evT (eval lint1 env0))^" ⊆ "^(string_of_evT (eval eint env0)));
 print_exp (Subset(lint1, eint)) env0;
-try
-  print_endline ("*** "^(string_of_evT (eval sint env0))^" ⊆ "^(string_of_evT (eval sbool env0))^"? ***");
-  print_exp (Subset(sint, sbool)) env0;
-with
-| Failure(s) -> print_endline ("Caught "^s);
+print_endline ("*** "^(string_of_evT (eval sint env0))^" ⊆ "^(string_of_evT (eval sbool env0))^"? ***");
+print_exp (Subset(sint, sbool)) env0;
 
 (*============== Test per SetMin/SetMax ==============*)
 print_endline "(*============== Test per SetMin/SetMax ==============*)";
@@ -214,17 +204,11 @@ let lstr1, lstr2 =
 print_endline ("*** Unione di "^(string_of_evT (eval lstr1 env0))^" U "^(string_of_evT (eval lstr2 env0))^" ***");
 print_exp (Merge(lstr1, lstr2)) env0;
 
-try
-  print_endline ("*** Unione di "^(string_of_evT (eval sstr env0))^" U "^(string_of_evT (eval eint env0))^" ***");
-  print_exp (Merge(sstr, eint)) env0 
-with
-| Failure(s) -> print_endline ("Caught "^s);
+print_endline ("*** Unione di "^(string_of_evT (eval sstr env0))^" U "^(string_of_evT (eval eint env0))^" ***");
+print_exp (Merge(sstr, eint)) env0;
 
-try 
-  print_endline ("*** Unione di "^(string_of_evT (String("Some text")))^" U "^(string_of_evT (eval eint env0))^" ***");
-  print_exp (Merge(Estring("Some text"), eint)) env0 
-with
-| Failure(s) -> print_endline ("Caught "^s);
+print_endline ("*** Unione di "^(string_of_evT (String("Some text")))^" U "^(string_of_evT (eval eint env0))^" ***");
+print_exp (Merge(Estring("Some text"), eint)) env0;
 
 (*============== Test per Intersect ==============*)
 print_endline "(*============== Test per Intersect ==============*)";
@@ -237,17 +221,11 @@ print_exp (Intersect(eint, lint)) env0;
 print_endline ("*** Intersezione di "^(string_of_evT (eval lstr env0))^" ∩ "^(string_of_evT (eval lstr env0))^" ***");
 print_exp (Intersect(lstr, lstr)) env0;
 
-try 
-  print_endline ("*** Intersezione di "^(string_of_evT (eval sstr env0))^" ∩ "^(string_of_evT (eval eint env0))^" ***");
-  print_exp (Intersect(sstr, eint)) env0
-with
-| Failure(s) -> print_endline ("Caught "^s);
+print_endline ("*** Intersezione di "^(string_of_evT (eval sstr env0))^" ∩ "^(string_of_evT (eval eint env0))^" ***");
+print_exp (Intersect(sstr, eint)) env0;
 
-try 
-  print_endline ("*** Intersezione di "^(string_of_evT (String("Some text")))^" ∩ "^(string_of_evT (eval eint env0))^" ***");
-  print_exp (Intersect(Estring("Some text"), eint)) env0
-with
-| Failure(s) -> print_endline ("Caught "^s);
+print_endline ("*** Intersezione di "^(string_of_evT (String("Some text")))^" ∩ "^(string_of_evT (eval eint env0))^" ***");
+print_exp (Intersect(Estring("Some text"), eint)) env0;
 
 (*============== Test per SetDiff ==============*)
 print_endline "(*============== Test per SetDiff ==============*)";
@@ -260,23 +238,14 @@ print_exp (SetDiff(sstr, lstr)) env0;
 print_endline ("*** Differenza "^(string_of_evT (eval sint env0))^" ∖ "^(string_of_evT (eval lint env0))^" ***");
 print_exp (SetDiff(sint, lint)) env0;
 
-try 
-  print_endline ("*** Differenza "^(string_of_evT (eval sint env0))^" ∖ "^(string_of_evT (eval sstr env0))^" ***");
-  print_exp (SetDiff(sint, sstr)) env0 
-with
-| Failure(s) -> print_endline ("Caught "^s);
+print_endline ("*** Differenza "^(string_of_evT (eval sint env0))^" ∖ "^(string_of_evT (eval sstr env0))^" ***");
+print_exp (SetDiff(sint, sstr)) env0;
 
-try 
-  print_endline ("*** Differenza "^(string_of_evT (eval sint env0))^" ∖ "^(string_of_evT (Bool(false)))^" ***");
-  print_exp (SetDiff(sint, Ebool(false))) env0 
-with
-| Failure(s) -> print_endline ("Caught "^s);
+print_endline ("*** Differenza "^(string_of_evT (eval sint env0))^" ∖ "^(string_of_evT (Bool(false)))^" ***");
+print_exp (SetDiff(sint, Ebool(false))) env0;
 
-try 
-  print_endline ("*** Differenza "^(string_of_evT (String("Test")))^" ∖ "^(string_of_evT (eval sstr env0))^" ***");
-  print_exp (SetDiff(Estring("Test"), sstr)) env0 
-with
-| Failure(s) -> print_endline ("Caught "^s);
+print_endline ("*** Differenza "^(string_of_evT (String("Test")))^" ∖ "^(string_of_evT (eval sstr env0))^" ***");
+print_exp (SetDiff(Estring("Test"), sstr)) env0;
 
 (*============== Definizione di funzioni ==============*)
 print_endline "(*============== Definizione di funzioni ==============*)";
@@ -387,17 +356,12 @@ print_exp (Forall(zero, lint)) env0;
 print_endline ("*** Forall(is_5_25, "^(string_of_evT (eval lint env0))^") ***");
 print_exp (Forall(is_5_25, lint)) env0;
 
-try
-  print_endline ("*** Forall(zero, Singleton(Eint(10), Estring(\"string\"))) ⇒ errore di valutazione del Set ***");
-  print_exp (Forall(zero, Singleton(Eint(10), Estring("string")))) env0
-with
-| Failure(s) -> print_endline ("Caught "^s);
+print_endline ("*** Forall(zero, Singleton(Eint(10), Estring(\"string\"))) ⇒ errore di valutazione del Set ***");
+print_exp (Forall(zero, Singleton(Eint(10), Estring("string")))) env0;
 
-try
-  print_endline ("*** Forall(zero, "^(string_of_evT (eval lbool env0))^") ⇒ errore di tipo (zero: Int->Bool) ***");
-  print_exp (Forall(zero, lbool)) env0;
-with
-| Failure(s) -> print_endline ("Caught "^s);
+
+print_endline ("*** Forall(zero, "^(string_of_evT (eval lbool env0))^") ⇒ errore di tipo (zero: Int->Bool) ***");
+print_exp (Forall(zero, lbool)) env0;
 
 (*Test Exists*)
 print_endline ("*** Exists(is_5_25, "^(string_of_evT (eval lint env0))^") ***");
@@ -411,17 +375,11 @@ print_exp (Exists(is_5_25, eint)) env0;
 print_endline ("*** Exists(notZero, "^(string_of_evT (eval lint1 env0))^") ***");
 print_exp (Exists(notZero, lint1)) env0;
 
-try
-  print_endline ("*** Exists(notZero, "^(string_of_evT (eval lbool env0))^") ⇒ errore di tipo ***");
-  print_exp (Exists(notZero, lbool)) env0;
-with
-| Failure(s) -> print_endline ("Caught "^s);
+print_endline ("*** Exists(notZero, "^(string_of_evT (eval lbool env0))^") ⇒ errore di tipo ***");
+print_exp (Exists(notZero, lbool)) env0;
 
-try
-  print_endline ("*** Exists(addMod, "^(string_of_evT (eval sstr env0))^") ⇒ errore: predicato non booleano ***");
-  print_exp (Exists(addMod, sstr)) env0;
-with
-| Failure(s) -> print_endline ("Caught "^s);
+print_endline ("*** Exists(addMod, "^(string_of_evT (eval sstr env0))^") ⇒ errore: predicato non booleano ***");
+print_exp (Exists(addMod, sstr)) env0;
 
 (*Test Filter*)
 (*definisco un set che contiene alcuni multipli di 5*)
@@ -435,17 +393,11 @@ print_exp (Filter(is_5_25, lint_union_5)) env0;
 print_endline ("*** Filter(findOcaml, "^(string_of_evT (eval lstr env0))^") ***");
 print_exp (Filter(findOcaml, lstr)) env0;
 
-try
-  print_endline ("*** Filter(findOcaml, "^(string_of_evT (eval sbool env0))^") ⇒ errore di tipo (findOcaml: String->Bool) ***");
-  print_exp (Filter(findOcaml, sbool)) env0;
-with
-| Failure(s) -> print_endline ("Caught "^s);
+print_endline ("*** Filter(findOcaml, "^(string_of_evT (eval sbool env0))^") ⇒ errore di tipo (findOcaml: String->Bool) ***");
+print_exp (Filter(findOcaml, sbool)) env0;
 
-try
-  print_endline ("*** Filter(addMod, "^(string_of_evT (eval sstr env0))^") ⇒ errore: predicato non booleano ***");
-  print_exp (Filter(addMod, sstr)) env0;
-with
-| Failure(s) -> print_endline ("Caught "^s);
+print_endline ("*** Filter(addMod, "^(string_of_evT (eval sstr env0))^") ⇒ errore: predicato non booleano ***");
+print_exp (Filter(addMod, sstr)) env0;
 
 (*Test Map*)
 print_endline ("*** Map(inc1, "^(string_of_evT (eval lint env0))^") [incrementa di 1 tutti gli elementi del Set] ***");
@@ -466,14 +418,8 @@ print_exp (Map(findOcaml, lstr)) env0;
 print_endline ("*** Map(gt_le_3, "^(string_of_evT (eval lint1 env0))^") [String \"gt\" per tutti gli elementi > Int 3, String \"le\" altrimenti] ***");
 print_exp (Map(gt_le_3, lint1)) env0;
 
-try
-  print_endline ("*** Map(addMod, "^(string_of_evT (eval lint env0))^") ⇒ errore di tipo (addMod: String->String) ***");
-  print_exp (Map(addMod, lint)) env0;
-with
-| Failure(s) -> print_endline ("Caught "^s);
+print_endline ("*** Map(addMod, "^(string_of_evT (eval lint env0))^") ⇒ errore di tipo (addMod: String->String) ***");
+print_exp (Map(addMod, lint)) env0;
 
-try
-  print_endline ("*** Map(gt_le_3, "^(string_of_evT (eval sstr env0))^") ⇒ errore di tipo (gt_le_3: Int->Bool) ***");
-  print_exp (Map(gt_le_3, sstr)) env0;
-with
-| Failure(s) -> print_endline ("Caught "^s);
+print_endline ("*** Map(gt_le_3, "^(string_of_evT (eval sstr env0))^") ⇒ errore di tipo (gt_le_3: Int->Bool) ***");
+print_exp (Map(gt_le_3, sstr)) env0;

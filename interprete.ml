@@ -661,7 +661,6 @@ let rec eval (e : exp) (r : evT env) : evT =
 
 
 (*Funzione da evT a stringhe, usata per stampare risultato di eval*)
-(*Non stampo FunVal perchè equivale a valutarla*)
 let rec string_of_evT (obj : evT) : string =
 	match obj with
 	| Int(x) -> "Int "^(string_of_int x)
@@ -680,8 +679,10 @@ let rec string_of_evT (obj : evT) : string =
 	| _ -> failwith("not supported")
 ;;
 
-(*	Funzione di supporto per stampare la valutazione 
- *	dell'espressione e valutata nell'ambiente env
- *)
+(*Funzione che valuta exp in r e stampa il risultato di tale valutazione*)
 let print_exp (e : exp) (r : evT env) : unit  = 
-	print_endline (string_of_evT (eval e r));;
+	try 
+		print_endline (string_of_evT (eval e r));
+	with
+	| Failure(s) -> print_endline ("Caught "^s)
+;;
