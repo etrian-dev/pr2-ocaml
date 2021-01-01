@@ -20,6 +20,7 @@ print_endline "*** Dichiaro l'ambiente vuoto ***";;
 let env0 = emptyenv Unbound;;
 
 print_endline "*** Dichiaro la funzione inc1 che incrementa l'argomento (intero) di 1 ***";;
+print_endline "inc1: Int->Int";;
 let inc1 = Fun("param", Sum(Den "param", Eint 1));;
 print_endline "*** Dichiaro la funzione che testa se l'argomento (stringa) è \"Test\" ***";;
 let isTest = Fun("s", Eq(Den "s", Estring("Test")));;
@@ -77,7 +78,7 @@ print_endline "(*============== Test per IsEmtpy ==============*)";
  *  Questo numero deve risultare 3
  *)
 let setlist = [eint; ebool; estr; sint; sbool; sstr; lint; lbool; lstr] in
-print_endline "*** Conto numero di set vuoti tra quelli definiti [3] ***";
+print_endline "*** Conto numero di set vuoti tra quelli definiti [i tre set vuoti] ***";
 let rec count_empty ls acc = match ls with
   | [] -> acc
   | hd::tl -> 
@@ -89,16 +90,16 @@ in Printf.printf "numero set vuoti: %d\n" (count_empty setlist 0);
 (*============== Test per Size ==============*)
 print_endline "(*============== Test per Size ==============*)";
 (*Cardinalità di lint => Int 3*)
-print_endline ("*** Cardinalità di "^(string_of_evT (eval lint env0))^" [3] ***");
+print_endline ("*** Cardinalità di "^(string_of_evT (eval lint env0))^" ***");
 print_exp (Size(lint)) env0;
 (*Cardinalità di lint1 => Int 5*)
-print_endline ("*** Cardinalità di "^(string_of_evT (eval lint1 env0))^" [5] ***");
+print_endline ("*** Cardinalità di "^(string_of_evT (eval lint1 env0))^" ***");
 (*Cardinalità di sstr => Int 1*)
 print_exp (Size(lint1)) env0;
-print_endline ("*** Cardinalità di "^(string_of_evT (eval sstr env0))^" [1] ***");
+print_endline ("*** Cardinalità di "^(string_of_evT (eval sstr env0))^" ***");
 print_exp (Size(sstr)) env0;
 (*Cardinalità di ebool => Int 0*)
-print_endline ("*** Cardinalità di "^(string_of_evT (eval ebool env0))^" [0] ***");
+print_endline ("*** Cardinalità di "^(string_of_evT (eval ebool env0))^" ***");
 print_exp (Size(ebool)) env0;
 
 (*============== Test per Contains ==============*)
@@ -111,6 +112,9 @@ print_endline ("*** Int 100 ∊ "^(string_of_evT (eval sint env0))^"? ***");
 print_exp (Contains(sint, Eint(100))) env0;
 print_endline ("*** Bool(true) ∊ "^(string_of_evT (eval ebool env0))^"? ***");
 print_exp (Contains(ebool, Ebool(true))) env0;
+print_endline ("*** Int 10 ∊ "^(string_of_evT (eval lint1 env0))^"? ***");
+print_exp (Contains(lint1, Eint(10))) env0;
+
 try 
   print_endline ("*** \"test\" ∊ "^(string_of_evT (eval lint1 env0))^"? ***");
   print_exp (Contains(lint1, Estring("test"))) env0;
@@ -430,9 +434,16 @@ print_endline ("*** Filter(is_5_25, "^(string_of_evT (eval lint_union_5 env0))^"
 print_exp (Filter(is_5_25, lint_union_5)) env0;
 print_endline ("*** Filter(findOcaml, "^(string_of_evT (eval lstr env0))^") ***");
 print_exp (Filter(findOcaml, lstr)) env0;
+
 try
   print_endline ("*** Filter(findOcaml, "^(string_of_evT (eval sbool env0))^") ⇒ errore di tipo (findOcaml: String->Bool) ***");
   print_exp (Filter(findOcaml, sbool)) env0;
+with
+| Failure(s) -> print_endline ("Caught "^s);
+
+try
+  print_endline ("*** Filter(addMod, "^(string_of_evT (eval sstr env0))^") ⇒ errore: predicato non booleano ***");
+  print_exp (Filter(addMod, sstr)) env0;
 with
 | Failure(s) -> print_endline ("Caught "^s);
 
@@ -454,3 +465,15 @@ print_endline ("*** Map(findOcaml, "^(string_of_evT (eval lstr env0))^") ***");
 print_exp (Map(findOcaml, lstr)) env0;
 print_endline ("*** Map(gt_le_3, "^(string_of_evT (eval lint1 env0))^") [String \"gt\" per tutti gli elementi > Int 3, String \"le\" altrimenti] ***");
 print_exp (Map(gt_le_3, lint1)) env0;
+
+try
+  print_endline ("*** Map(addMod, "^(string_of_evT (eval lint env0))^") ⇒ errore di tipo (addMod: String->String) ***");
+  print_exp (Map(addMod, lint)) env0;
+with
+| Failure(s) -> print_endline ("Caught "^s);
+
+try
+  print_endline ("*** Map(gt_le_3, "^(string_of_evT (eval sstr env0))^") ⇒ errore di tipo (gt_le_3: Int->Bool) ***");
+  print_exp (Map(gt_le_3, sstr)) env0;
+with
+| Failure(s) -> print_endline ("Caught "^s);
