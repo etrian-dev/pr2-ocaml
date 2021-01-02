@@ -640,17 +640,18 @@ let rec eval (e : exp) (r : evT env) : evT =
 					Inserisco nel set prodotto dalla valutazione di Map sulla coda il
 					risultato della valutazione di funct con parametro attuale hd
 				*)
-					let env_plus_hd = bind decEnv arg hd in
-						let res_hd = eval body env_plus_hd in
+					let env_plus_hd = bind decEnv arg hd in (*lego argomento al valore hd*)
+						let res_hd = eval body env_plus_hd in (*valuto il corpo nel nuovo ambiente*)
 							let new_t = (match res_hd with
 								| Int(x) -> "int"
 								| Bool(x) -> "bool"
 								| String(x) -> "string"
 								| _ -> failwith "Error: not a valid set type"
-							) in
-
-						let tailset = eval (Map(funct, Set(listExp tl [], Estring(t)))) r in
+							) in (*trovo nuovo tipo del set*)
+							(*valuto Map applicato a tl*)
+							let tailset = eval (Map(funct, Set(listExp tl [], Estring(t)))) r in
 							(match tailset with
+							(*Quindi adesso posso costruire il SetVal da restituire*)
 							| SetVal(items, set_type) -> SetVal(res_hd::items, new_t)
 							| _ -> failwith "Error: not a valid set"
 							)
