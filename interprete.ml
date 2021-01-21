@@ -30,7 +30,10 @@ let rec typecheck (s : string) (v : evT) : bool =
 	| SetVal(items, set_type) ->
 		(*
 			Controllo che il tipo del set sia int, bool o string 
-			e che tutti i suoi elementi siano di tale tipo.
+			e che tutti i suoi elementi siano di tale tipo. Questo aspetto non
+			e' stato evidenziato nella semantica fornita per brevita' ed in quanto
+			potrebbero essere supportati ulteriori tipi di set senza dover sostanzialmente
+			modificare le regole.
 			Se tali condizioni sono soddisfatte allora ho un SetVal 
 			valido, quindi restituisco true.
 			Altrimenti non lo è, allora false
@@ -62,7 +65,11 @@ let diff x y = if (typecheck "int" x) && (typecheck "int" y)
 		| _,_ -> failwith "Error: cannot apply to the operands"
 	else failwith "Type error";;
 
-(*Ho modificato eq per accettare anche uguaglianza tra booleani e stringhe*)
+(*
+	Ho modificato eq per accettare anche uguaglianza tra booleani e stringhe
+	e poter usare l'operazione Eq(exp, exp) nella definizione di funzioni 
+	anche tra bool e stringhe
+*)
 let eq x y = 
 	if	(typecheck "int" x) && (typecheck "int" y)
 		|| (typecheck "bool" x) && (typecheck "bool" y)
@@ -119,7 +126,7 @@ let concat (s1 : evT) (s2 : evT) : evT =
 
 (*
 	Costruisce il set di tipo t contenente gli elementi nella lista ls,
-	dopo aver il typecheck sugli gli elementi di ls e su t
+	dopo aver eseguito (a runtime) il typecheck sugli gli elementi di ls e su t
 *)
 let setbuild (t : evT) (ls : evT list) : evT =
  	match t with
@@ -127,7 +134,7 @@ let setbuild (t : evT) (ls : evT list) : evT =
 		if typecheck s (SetVal(ls, s))
 		then SetVal(ls, s)
 		else failwith "Error: not a valid Set"
-	(*Se t non è una String allora non può essere un tipo*)
+	(*Se t non è una String allora non può essere un tipo (inutile fare il typecheck)*)
 	| _ -> failwith "Error: not a valid Set"
 ;;
 
@@ -443,7 +450,7 @@ let rec eval (e : exp) (r : evT env) : evT =
 	| Estring s -> if typecheck "string" (String(s)) 
 		then String(s) 
 		else failwith "Error: not a string"
-	(*Valutazione dell'operazione di concatenazione, typecheck in concat*)
+	(*Valutazione dell'operazione di concatenazione. Il typecheck viene eseguito in concat*)
 	| Concat(s1, s2) -> concat (eval s1 r) (eval s2 r)
 	(*Valutazione di Set a SetVal. Il typecheck viene eseguito in setbuild*)
 	| EmptySet(set_type) -> setbuild (eval set_type r) []
@@ -452,7 +459,7 @@ let rec eval (e : exp) (r : evT env) : evT =
 		(*
 			Funzione ausiliaria per inserire senza duplicati la lista di elementi ls
 			a partire da un Set vuoto
-		 	Il typechecking è effettuato internamente da insert, lancia un'eccezione se
+		 	Il typechecking è effettuato internamente da setbuild. Lancia un'eccezione se
 			trova un elemento il cui tipo sia diverso dal tipo del Set
 		 *)
 		let rec addlist (set : evT) (ls : exp list) : evT = match ls with
@@ -642,12 +649,16 @@ let rec eval (e : exp) (r : evT env) : evT =
 				*)
 					let env_plus_hd = bind decEnv arg hd in (*lego argomento al valore hd*)
 						let res_hd = eval body env_plus_hd in (*valuto il corpo nel nuovo ambiente*)
+							(*
+								trovo nuovo tipo del set: l'interprete supporta funzioni della forma
+								f: type1 -> type2
+							*)
 							let new_t = (match res_hd with
 								| Int(x) -> "int"
 								| Bool(x) -> "bool"
 								| String(x) -> "string"
 								| _ -> failwith "Error: not a valid set type"
-							) in (*trovo nuovo tipo del set*)
+							) in
 							(*valuto Map applicato a tl*)
 							let tailset = eval (Map(funct, Set(listExp tl [], Estring(t)))) r in
 							(match tailset with

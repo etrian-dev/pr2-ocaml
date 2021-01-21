@@ -46,8 +46,8 @@ type exp =
 
     (*============= Le modifiche apportate =============*)
 	(*	
-    	Il linguaggio è esteso con i seguenti tipi di espressioni:
-    	● Stringhe (Estring)
+    Il linguaggio è esteso con i seguenti tipi di espressioni:
+    ● Stringhe (Estring)
 		● Concatenzione di stringhe (Concat)
 		● Set (con annotazione di tipo)
 		● varie operazioni su Set
