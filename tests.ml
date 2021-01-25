@@ -338,7 +338,7 @@ in
 (*Test*)
 print_endline "*** exp2(10) = Int(2)**Int(10) ***";
 let r3 = bind env0 "arg1" (Int(10)) in print_exp exp2 r3;
-print_endline "*** exp2(10) = Int(2)**Int(0) ***";
+print_endline "*** exp2(0) = Int(2)**Int(0) ***";
 let r4 = bind env0 "arg1" (Int(0)) in print_exp exp2 r4;
 print_endline "*** exp2(32) = Int(2)**Int(32) ***";
 let r5 = bind env0 "arg1" (Int(32)) in print_exp exp2 r5;

@@ -241,7 +241,7 @@ let rec subset (a : evT) (ta : string) (b : evT) (tb : string) : bool =
 			)
 		| _ -> failwith "Error: not a set"
 	(*Se i set sono di tipo diverso allora sollevo un eccezione*)
-	else failwith "warning: type mismatch"
+	else failwith "Error: type mismatch"
 ;;
 
 (*Funzione ausiliaria che restituisce true sse x < y*)
