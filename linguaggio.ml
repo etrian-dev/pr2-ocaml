@@ -47,12 +47,11 @@ type exp =
     (*============= Le modifiche apportate =============*)
 	(*	
     Il linguaggio è esteso con i seguenti tipi di espressioni:
-    ● Stringhe (Estring)
-		● Concatenzione di stringhe (Concat)
-		● Set (con annotazione di tipo)
-		● varie operazioni su Set
+    ● Stringhe
+	● Concatenzione di stringhe
+	● Set (con annotazione di tipo)
+	● Varie operazioni su Set
 	*)
-	
 	| Estring of string
 	| Concat of exp * exp
 	(*
@@ -69,8 +68,7 @@ type exp =
 	| Set of (exp list) * exp
 	(*============= Operazioni su Set =============*)
 	| IsEmpty of exp
-	(*Cardinalità del Set passato come argomento*)
-	| Size of exp
+	| Size of exp (*Cardinalità del Set passato come argomento*)
 	| Contains of exp * exp
 	| Insert of exp * exp
 	| Remove of exp * exp
